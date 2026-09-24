@@ -1,0 +1,15 @@
+package com.jess.shop.shipping.repository;
+
+import com.jess.shop.shipping.entity.Shipment;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
+    List<Shipment> findByOrderId(UUID orderId);
+
+    /** The outbound shipment (not a return label) shown to the customer on their order tracking page. */
+    Optional<Shipment> findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(UUID orderId);
+}
