@@ -1,4 +1,6 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Stripped of any trailing slash -- every call below appends a path starting with "/", so a
+// trailing slash here would produce a double slash that the backend's router won't match.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 
 /** Admin-uploaded images are stored as "/uploads/..." and served by the backend, not by Next.js. */
 export function mediaUrl(url: string): string {

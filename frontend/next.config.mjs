@@ -1,6 +1,9 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 
-const apiOrigin = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+// Stripped of any trailing slash -- a CSP source like "https://api.graphites.world/" (with the
+// slash) only matches that exact root path, not the whole origin, silently blocking every real
+// API call.
+const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
 
 // Mitigates the admin JWT living in localStorage (see lib/auth.ts) by blocking the two things that
 // would actually let an attacker read it -- script injection and being framed. There's no known XSS
