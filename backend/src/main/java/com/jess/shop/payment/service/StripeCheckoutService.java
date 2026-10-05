@@ -14,19 +14,20 @@ import java.util.List;
 @Service
 public class StripeCheckoutService {
 
-    // Stripe requires an explicit allow-list for shipping address collection -- there's no "all
-    // countries" wildcard. US-only for launch (deliberate scope, not a placeholder -- see README);
-    // add more countries here once the shop is ready to actually fulfill international orders.
-    private static final List<SessionCreateParams.ShippingAddressCollection.AllowedCountry> ALLOWED_SHIPPING_COUNTRIES = List.of(
-        SessionCreateParams.ShippingAddressCollection.AllowedCountry.US
-    );
+    // Stripe's own built-in tax code for shipping charges -- lets automatic tax apply each state's
+    // real shipping-taxability rules instead of treating this line item as ordinary merchandise.
+    private static final String SHIPPING_TAX_CODE = "txcd_92010001";
 
     @Value("${app.frontend-base-url:http://localhost:3000}")
     private String frontendBaseUrl;
 
-    /** Builds a Stripe Checkout Session from the order's line items. Stripe's hosted page collects
-     * the shipping address and (for guests) the email, and computes tax automatically. */
-    public Session createSession(Order order, List<CartItemResponse> items, String customerEmail) throws StripeException {
+    /** Builds a Stripe Checkout Session from the order's line items plus one line item for the real
+     * Shippo-quoted delivery method the customer already picked on the checkout page (see
+     * CheckoutController) -- Stripe no longer collects the address or offers its own shipping tiers,
+     * since both are already known by the time this runs. Stripe's hosted page is left to handle only
+     * payment, automatic tax, and (for guests) confirming the email. */
+    public Session createSession(Order order, List<CartItemResponse> items, String customerEmail,
+                                  String shippingLabel, BigDecimal shippingAmount) throws StripeException {
         SessionCreateParams.Builder builder = SessionCreateParams.builder()
             .setMode(SessionCreateParams.Mode.PAYMENT)
             .setSuccessUrl(frontendBaseUrl + "/order-confirmation?session_id={CHECKOUT_SESSION_ID}")
@@ -36,19 +37,7 @@ public class StripeCheckoutService {
             // Cash App and Amazon Pay -- Link in particular asks for an email verification code right
             // after you type your email, which looks exactly like "nothing happens" if you miss it.
             .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-            .setAutomaticTax(SessionCreateParams.AutomaticTax.builder().setEnabled(true).build())
-            .setShippingAddressCollection(
-                SessionCreateParams.ShippingAddressCollection.builder()
-                    .addAllAllowedCountry(ALLOWED_SHIPPING_COUNTRIES)
-                    .build()
-            )
-            // Named flat-rate tiers, not live carrier rates -- the customer picks a speed/price tier
-            // here; which real carrier (UPS/USPS/etc.) actually ships it is a separate, later decision
-            // made in the admin fulfillment queue against real Shippo rates (ShipmentService). Free
-            // ground shipping is the norm across most clothing DTC sites, so it's the default tier;
-            // Express is the only paid upgrade.
-            .addShippingOption(shippingTier("Free Shipping (UPS Ground)", 0L, 5L, 7L))
-            .addShippingOption(shippingTier("Express Shipping", 1499L, 2L, 2L));
+            .setAutomaticTax(SessionCreateParams.AutomaticTax.builder().setEnabled(true).build());
 
         if (customerEmail != null && !customerEmail.isBlank()) {
             builder.setCustomerEmail(customerEmail);
@@ -83,42 +72,28 @@ public class StripeCheckoutService {
             );
         }
 
-        return Session.create(builder.build());
-    }
-
-    private SessionCreateParams.ShippingOption shippingTier(String displayName, long amountCents, long minDays, long maxDays) {
-        return SessionCreateParams.ShippingOption.builder()
-            .setShippingRateData(
-                SessionCreateParams.ShippingOption.ShippingRateData.builder()
-                    .setType(SessionCreateParams.ShippingOption.ShippingRateData.Type.FIXED_AMOUNT)
-                    .setFixedAmount(
-                        SessionCreateParams.ShippingOption.ShippingRateData.FixedAmount.builder()
-                            .setAmount(amountCents)
+        if (shippingLabel != null) {
+            BigDecimal amount = shippingAmount == null ? BigDecimal.ZERO : shippingAmount;
+            builder.addLineItem(
+                SessionCreateParams.LineItem.builder()
+                    .setQuantity(1L)
+                    .setPriceData(
+                        SessionCreateParams.LineItem.PriceData.builder()
                             .setCurrency("usd")
-                            .build()
-                    )
-                    // Required whenever automatic_tax is enabled -- our prices are entered
-                    // tax-exclusive (tax is added on top at checkout), so shipping matches.
-                    .setTaxBehavior(SessionCreateParams.ShippingOption.ShippingRateData.TaxBehavior.EXCLUSIVE)
-                    .setDisplayName(displayName)
-                    .setDeliveryEstimate(
-                        SessionCreateParams.ShippingOption.ShippingRateData.DeliveryEstimate.builder()
-                            .setMinimum(
-                                SessionCreateParams.ShippingOption.ShippingRateData.DeliveryEstimate.Minimum.builder()
-                                    .setUnit(SessionCreateParams.ShippingOption.ShippingRateData.DeliveryEstimate.Minimum.Unit.BUSINESS_DAY)
-                                    .setValue(minDays)
+                            .setUnitAmount(amount.multiply(BigDecimal.valueOf(100)).longValue())
+                            .setProductData(
+                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                    .setName("Shipping -- " + shippingLabel)
+                                    .setTaxCode(SHIPPING_TAX_CODE)
                                     .build()
                             )
-                            .setMaximum(
-                                SessionCreateParams.ShippingOption.ShippingRateData.DeliveryEstimate.Maximum.builder()
-                                    .setUnit(SessionCreateParams.ShippingOption.ShippingRateData.DeliveryEstimate.Maximum.Unit.BUSINESS_DAY)
-                                    .setValue(maxDays)
-                                    .build()
-                            )
+                            .setTaxBehavior(SessionCreateParams.LineItem.PriceData.TaxBehavior.EXCLUSIVE)
                             .build()
                     )
                     .build()
-            )
-            .build();
+            );
+        }
+
+        return Session.create(builder.build());
     }
 }

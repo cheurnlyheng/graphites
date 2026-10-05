@@ -1,5 +1,6 @@
 package com.jess.shop.shipping.service;
 
+import com.jess.shop.cart.dto.CartDtos.CartItemResponse;
 import com.jess.shop.catalog.entity.Product;
 import com.jess.shop.catalog.entity.ProductVariant;
 import com.jess.shop.catalog.repository.ProductRepository;
@@ -14,6 +15,7 @@ import com.jess.shop.order.entity.OrderStatus;
 import com.jess.shop.order.repository.OrderItemRepository;
 import com.jess.shop.order.repository.OrderRepository;
 import com.jess.shop.shipping.dto.AdminShippingDtos.*;
+import com.jess.shop.shipping.dto.CheckoutShippingDtos.ShippingAddressRequest;
 import com.jess.shop.shipping.dto.ShippoDtos.*;
 import com.jess.shop.shipping.entity.Shipment;
 import com.jess.shop.shipping.repository.ShipmentRepository;
@@ -22,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -75,11 +79,22 @@ public class ShipmentService {
         Address shipTo = addressRepository.findById(order.getShippingAddressId())
             .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found"));
 
-        AddressPayload from = warehouseAddress();
         AddressPayload to = new AddressPayload(shipTo.getFullName(), shipTo.getLine1(), shipTo.getLine2(), shipTo.getCity(),
             shipTo.getState(), shipTo.getPostalCode(), shipTo.getCountry(), shipTo.getPhone(), order.getEmail());
+        return quoteRates(to, estimateParcel(order));
+    }
 
-        ShipmentResponse response = shippoService.getRates(from, to, estimateParcel(order));
+    /** Same rate quote, before an order even exists -- the checkout page calls this once the customer
+     * has entered their address, so they can pick a real delivery method (and its real price) before
+     * ever reaching Stripe. See CheckoutController. */
+    public ShippingRatesResponse getRatesForAddress(List<CartItemResponse> cartItems, ShippingAddressRequest shipTo) {
+        AddressPayload to = new AddressPayload(shipTo.fullName(), shipTo.line1(), shipTo.line2(), shipTo.city(),
+            shipTo.state(), shipTo.postalCode(), shipTo.country(), shipTo.phone(), shipTo.email());
+        return quoteRates(to, estimateParcelForCart(cartItems));
+    }
+
+    private ShippingRatesResponse quoteRates(AddressPayload to, ParcelPayload parcel) {
+        ShipmentResponse response = shippoService.getRates(warehouseAddress(), to, parcel);
         List<ShippingRateOption> options = response.rates().stream()
             .map(r -> new ShippingRateOption(r.objectId(), r.provider(),
                 r.serviceLevel() != null ? String.valueOf(r.serviceLevel().get("name")) : null,
@@ -154,15 +169,31 @@ public class ShipmentService {
     /** MVP approximation: sums each line item's product weight and assumes one fixed default box
      * size, since accurately bin-packing arbitrary items into an optimal box is out of scope for now. */
     private ParcelPayload estimateParcel(Order order) {
-        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-        int totalGrams = 0;
-        for (OrderItem item : items) {
+        Map<UUID, Integer> qtyByVariant = new HashMap<>();
+        for (OrderItem item : orderItemRepository.findByOrderId(order.getId())) {
             if (item.getProductVariantId() == null) continue; // product was deleted since this order was placed
-            ProductVariant variant = variantRepository.findById(item.getProductVariantId()).orElse(null);
+            qtyByVariant.merge(item.getProductVariantId(), item.getQuantity(), Integer::sum);
+        }
+        return estimateParcelFromVariants(qtyByVariant);
+    }
+
+    /** Same estimate, from a cart instead of a placed order -- see getRatesForAddress. */
+    private ParcelPayload estimateParcelForCart(List<CartItemResponse> cartItems) {
+        Map<UUID, Integer> qtyByVariant = new HashMap<>();
+        for (CartItemResponse item : cartItems) {
+            qtyByVariant.merge(item.productVariantId(), item.quantity(), Integer::sum);
+        }
+        return estimateParcelFromVariants(qtyByVariant);
+    }
+
+    private ParcelPayload estimateParcelFromVariants(Map<UUID, Integer> qtyByVariant) {
+        int totalGrams = 0;
+        for (Map.Entry<UUID, Integer> entry : qtyByVariant.entrySet()) {
+            ProductVariant variant = variantRepository.findById(entry.getKey()).orElse(null);
             if (variant == null) continue;
             Product product = productRepository.findById(variant.getProductId()).orElse(null);
             int weight = (product != null && product.getWeightGrams() != null) ? product.getWeightGrams() : 300;
-            totalGrams += weight * item.getQuantity();
+            totalGrams += weight * entry.getValue();
         }
         if (totalGrams == 0) {
             totalGrams = 300;

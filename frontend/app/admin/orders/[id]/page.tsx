@@ -335,6 +335,11 @@ export default function AdminOrderDetailPage() {
               <p className="text-xs text-[#10100F]/60 mt-1">
                 Retrieve live carrier rates from Shippo and generate shipment labels.
               </p>
+              {order.selectedCarrier && (
+                <p className="text-xs text-[#10100F]/80 mt-2 rounded-lg bg-[#f3f3f1] px-2.5 py-1.5">
+                  Customer chose: <span className="font-bold">{order.selectedCarrier} {order.selectedServiceLevel}</span>
+                </p>
+              )}
             </div>
 
             {order.status !== 'PAID' && (
@@ -379,28 +384,44 @@ export default function AdminOrderDetailPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60 block">
                   Available Rates
                 </span>
-                {rates.map((r) => (
-                  <div
-                    key={r.rateObjectId}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-[#e5ded2] p-3 text-xs hover:border-[#10100F] transition-colors"
-                  >
-                    <div>
-                      <p className="font-bold text-[#10100F]">
-                        {r.provider} {r.serviceLevel}
-                      </p>
-                      <p className="text-xs text-[#10100F]/60 mt-0.5">
-                        ${r.amount} {r.currency} • {r.estimatedDays ?? '?'} days
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => buyLabel(r.rateObjectId, r.provider)}
-                      disabled={buying}
-                      className="rounded-full bg-[#10100F] hover:bg-neutral-800 text-white px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all shrink-0 active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {buying ? 'Buying…' : 'Buy Label'}
-                    </button>
-                  </div>
-                ))}
+                {[...rates]
+                  .sort((a, b) => {
+                    const aMatch = a.provider === order.selectedCarrier && a.serviceLevel === order.selectedServiceLevel;
+                    const bMatch = b.provider === order.selectedCarrier && b.serviceLevel === order.selectedServiceLevel;
+                    return aMatch === bMatch ? 0 : aMatch ? -1 : 1;
+                  })
+                  .map((r) => {
+                    const isCustomerChoice = r.provider === order.selectedCarrier && r.serviceLevel === order.selectedServiceLevel;
+                    return (
+                      <div
+                        key={r.rateObjectId}
+                        className={`flex items-center justify-between gap-2 rounded-xl border p-3 text-xs transition-colors ${
+                          isCustomerChoice ? 'border-emerald-300 bg-emerald-50/50' : 'border-[#e5ded2] hover:border-[#10100F]'
+                        }`}
+                      >
+                        <div>
+                          {isCustomerChoice && (
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-0.5">✓ Customer&apos;s Choice</p>
+                          )}
+                          <p className="font-bold text-[#10100F]">
+                            {r.provider} {r.serviceLevel}
+                          </p>
+                          <p className="text-xs text-[#10100F]/60 mt-0.5">
+                            ${r.amount} {r.currency} • {r.estimatedDays ?? '?'} days
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => buyLabel(r.rateObjectId, r.provider)}
+                          disabled={buying}
+                          className={`rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all shrink-0 active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed ${
+                            isCustomerChoice ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-[#10100F] hover:bg-neutral-800 text-white'
+                          }`}
+                        >
+                          {buying ? 'Buying…' : 'Buy Label'}
+                        </button>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>

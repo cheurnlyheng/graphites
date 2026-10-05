@@ -135,11 +135,11 @@ export default function OrderDetailPage() {
   if (notFound) {
     return (
       <div className={containerClass}>
-        <div className="border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-sm">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#10100F]/40 block mb-3">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+          <span className="text-[11px] uppercase tracking-widest text-[#10100F]/40 block mb-3">
             Track Order
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-[#10100F] mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#10100F] mb-4">
             Order Not Found
           </h1>
           <p className="text-xs sm:text-sm text-[#10100F]/60 max-w-sm mx-auto mb-8 leading-relaxed">
@@ -147,7 +147,7 @@ export default function OrderDetailPage() {
           </p>
           <Link
             href="/products"
-            className="inline-flex items-center justify-center rounded-full bg-[#10100F] px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
+            className="inline-flex items-center justify-center rounded-lg bg-[#10100F] px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
           >
             Explore Catalog →
           </Link>
@@ -159,9 +159,9 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className={containerClass}>
-        <div className="border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-sm">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
           <div className="w-8 h-8 border-2 border-black/20 border-t-[#10100F] rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-xs font-mono uppercase tracking-widest text-[#10100F]/60">
+          <p className="text-xs uppercase tracking-widest text-[#10100F]/60">
             Retrieving live order dispatch status…
           </p>
         </div>
@@ -215,13 +215,13 @@ export default function OrderDetailPage() {
           <span className="text-xs font-mono font-medium text-[#10100F]/50">
             Ordered {formatDate(order.createdAt)}
           </span>
-          <span className="text-xs font-mono text-[#10100F]/30">·</span>
-          <span className="text-xs font-mono text-[#10100F]/50">
+          <span className="text-xs text-[#10100F]/30">·</span>
+          <span className="text-xs text-[#10100F]/50">
             {order.email}
           </span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-[#10100F] uppercase leading-[0.95] mb-4">
+        <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#10100F] mb-4">
           Order #{order.id.slice(0, 8).toUpperCase()}
         </h1>
 
@@ -232,14 +232,14 @@ export default function OrderDetailPage() {
 
       {/* Special Notice for Cancelled or Pending */}
       {isCancelled && (
-        <div className="border border-rose-300 bg-rose-50/50 p-6 mb-10 text-rose-800 text-xs sm:text-sm">
+        <div className="rounded-xl border border-rose-300 bg-rose-50/50 p-6 mb-10 text-rose-800 text-xs sm:text-sm">
           <p className="font-bold uppercase tracking-wider mb-1">Order Cancelled</p>
           <p className="text-rose-700/80">This order was cancelled. If you believe this is in error, please contact our support team.</p>
         </div>
       )}
 
       {order.status === 'PENDING' && (
-        <div className="border border-amber-300 bg-amber-50/50 p-6 mb-10 text-amber-800 text-xs sm:text-sm">
+        <div className="rounded-xl border border-amber-300 bg-amber-50/50 p-6 mb-10 text-amber-800 text-xs sm:text-sm">
           <p className="font-bold uppercase tracking-wider mb-1">Awaiting Payment Confirmation</p>
           <p className="text-amber-700/80">We are confirming your payment with Stripe. This page will update automatically once verified.</p>
         </div>
@@ -247,12 +247,12 @@ export default function OrderDetailPage() {
 
       {/* Milestone Progress Tracker */}
       {!isCancelled && order.status !== 'PENDING' && (
-        <div className="border border-[#e5ded2] bg-white p-6 sm:p-10 mb-10 shadow-sm">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-6 sm:p-10 mb-10 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between border-b border-[#e5ded2]/70 pb-4 mb-8">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#10100F]">
-              Fulfillment Journey
+            <span className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+              Fulfillment journey
             </span>
-            <span className="text-[11px] font-mono text-[#10100F]/50">
+            <span className="text-[11px] text-[#10100F]/50">
               {isDelivered
                 ? 'Delivered'
                 : isShipped
@@ -392,7 +392,7 @@ export default function OrderDetailPage() {
             <div className="mt-8 pt-6 border-t border-[#e5ded2] bg-[#fbfbfb] -mx-6 -mb-6 sm:-mx-10 sm:-mb-10 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#10100F]/40">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#10100F]/40">
                     Carrier Information
                   </span>
                   {order.carrier && (
@@ -425,7 +425,7 @@ export default function OrderDetailPage() {
                   href={order.trackingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
                 >
                   <span>Track on Carrier Website</span>
                   <span>↗</span>
@@ -442,10 +442,10 @@ export default function OrderDetailPage() {
         <div className="space-y-8">
           <div>
             <div className="flex items-center justify-between border-b border-[#e5ded2] pb-3 mb-4">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#10100F]/60">
-                Silhouettes in this Shipment ({order.items.length})
+              <span className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                Items in this shipment ({order.items.length})
               </span>
-              <span className="text-[11px] font-mono text-[#10100F]/40">
+              <span className="text-[11px] text-[#10100F]/40">
                 Studio Authenticated
               </span>
             </div>
@@ -468,7 +468,7 @@ export default function OrderDetailPage() {
                             className="object-cover object-center"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-[10px] text-black/30 font-mono tracking-widest">
+                          <div className="h-full w-full flex items-center justify-center text-[10px] text-black/30 tracking-widest">
                             GRAPHITES
                           </div>
                         )}
@@ -476,23 +476,23 @@ export default function OrderDetailPage() {
 
                       {/* Product Details */}
                       <div className="min-w-0">
-                        <p className="font-extrabold uppercase tracking-tight text-[#10100F] text-base truncate">
+                        <p className="font-semibold text-[#10100F] text-base truncate">
                           {item.productName}
                         </p>
                         {item.variantAttributes && (
-                          <span className="inline-block mt-1 text-[11px] font-mono font-medium uppercase tracking-wider text-[#10100F]/60 bg-black/5 px-2 py-0.5 rounded">
+                          <span className="inline-block mt-1 text-[11px] font-medium text-[#10100F]/60 bg-black/5 px-2 py-0.5 rounded">
                             {item.variantAttributes}
                           </span>
                         )}
-                        <p className="mt-1.5 text-xs text-[#10100F]/50 font-mono">
-                          QTY {item.quantity} · ${item.unitPrice.toFixed(2)} each
+                        <p className="mt-1.5 text-xs text-[#10100F]/50">
+                          Qty {item.quantity} · ${item.unitPrice.toFixed(2)} each
                         </p>
                       </div>
                     </div>
 
                     {/* Line Total */}
                     <div className="text-right shrink-0">
-                      <p className="text-base font-bold text-[#10100F] tracking-tight">
+                      <p className="text-base font-bold text-[#10100F] tracking-tight font-mono">
                         ${item.lineTotal.toFixed(2)}
                       </p>
                     </div>
@@ -504,12 +504,12 @@ export default function OrderDetailPage() {
 
           {/* Cancel Order Section -- only before it ships; once it's on its way, see Returns below */}
           {canCancel && (
-            <div className="border border-[#e5ded2] bg-[#fbfbfb] p-6 sm:p-8">
+            <div className="rounded-xl border border-[#e5ded2] bg-[#fbfbfb] p-6 sm:p-8">
               {!showCancelForm ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F] mb-1">
-                      Need to Cancel?
+                    <h3 className="text-sm font-bold uppercase tracking-wide text-[#10100F] mb-1">
+                      Need to cancel?
                     </h3>
                     <p className="text-xs text-[#10100F]/60">
                       This order hasn&apos;t shipped yet -- you can cancel it now for a full refund.
@@ -518,7 +518,7 @@ export default function OrderDetailPage() {
                   <button
                     onClick={() => setShowCancelForm(true)}
                     type="button"
-                    className="inline-flex items-center justify-center rounded-full border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
+                    className="inline-flex items-center justify-center rounded-lg border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
                   >
                     Cancel My Order
                   </button>
@@ -526,20 +526,20 @@ export default function OrderDetailPage() {
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-center justify-between border-b border-[#e5ded2] pb-3">
-                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F]">
-                      Cancel This Order
+                    <span className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                      Cancel this order
                     </span>
                     <button
                       onClick={() => setShowCancelForm(false)}
                       type="button"
-                      className="text-xs font-mono uppercase text-[#10100F]/40 hover:text-[#10100F]"
+                      className="text-xs uppercase text-[#10100F]/40 hover:text-[#10100F]"
                     >
                       Never mind
                     </button>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/60 block">
+                    <label className="mb-1.5 block text-[13px] font-medium text-[#10100F]/55">
                       Reason (optional)
                     </label>
                     <textarea
@@ -547,7 +547,7 @@ export default function OrderDetailPage() {
                       onChange={(e) => setCancelReason(e.target.value)}
                       placeholder="e.g. Ordered the wrong size"
                       rows={3}
-                      className="w-full border border-[#e5ded2] bg-white p-3 text-xs text-[#10100F] placeholder:text-[#10100F]/30 focus:border-[#10100F] focus:outline-none transition-colors"
+                      className="w-full rounded-lg border border-[#e3e3e3] bg-white p-3 text-sm text-[#10100F] placeholder:text-[#10100F]/30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow focus:border-[#10100F] focus:outline-none focus:ring-[3px] focus:ring-[#10100F]/10"
                     />
                   </div>
 
@@ -556,7 +556,7 @@ export default function OrderDetailPage() {
                       onClick={cancelOrder}
                       disabled={cancelling}
                       type="button"
-                      className="inline-flex items-center justify-center rounded-full bg-rose-700 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-rose-800 transition-all active:scale-95 disabled:opacity-40"
+                      className="inline-flex items-center justify-center rounded-lg bg-rose-700 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-rose-800 transition-all active:scale-95 disabled:opacity-40"
                     >
                       {cancelling ? 'Cancelling…' : 'Confirm Cancellation'}
                     </button>
@@ -573,12 +573,12 @@ export default function OrderDetailPage() {
 
           {/* Returns & Exchange Section -- only once it's actually arrived */}
           {canReturn && (
-            <div className="border border-[#e5ded2] bg-[#fbfbfb] p-6 sm:p-8">
+            <div className="rounded-xl border border-[#e5ded2] bg-[#fbfbfb] p-6 sm:p-8">
               {!showReturnForm ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F] mb-1">
-                      30-Day Returns
+                    <h3 className="text-sm font-bold uppercase tracking-wide text-[#10100F] mb-1">
+                      30-day returns
                     </h3>
                     <p className="text-xs text-[#10100F]/60">
                       Unworn items in original condition with tags attached are eligible for return within 30 days of delivery.
@@ -587,7 +587,7 @@ export default function OrderDetailPage() {
                   <button
                     onClick={() => setShowReturnForm(true)}
                     type="button"
-                    className="inline-flex items-center justify-center rounded-full border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
+                    className="inline-flex items-center justify-center rounded-lg border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
                   >
                     Request a Return
                   </button>
@@ -595,19 +595,19 @@ export default function OrderDetailPage() {
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-center justify-between border-b border-[#e5ded2] pb-3">
-                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F]">
-                      Select Silhouettes to Return
+                    <span className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                      Select items to return
                     </span>
                     <button
                       onClick={() => setShowReturnForm(false)}
                       type="button"
-                      className="text-xs font-mono uppercase text-[#10100F]/40 hover:text-[#10100F]"
+                      className="text-xs uppercase text-[#10100F]/40 hover:text-[#10100F]"
                     >
                       Cancel
                     </button>
                   </div>
 
-                  <div className="divide-y divide-[#e5ded2] border border-[#e5ded2] bg-white">
+                  <div className="divide-y divide-[#e5ded2] rounded-lg border border-[#e5ded2] bg-white overflow-hidden">
                     {order.items.map((item) => (
                       <label
                         key={item.id}
@@ -619,7 +619,7 @@ export default function OrderDetailPage() {
                           onChange={(e) => setSelected((s) => ({ ...s, [item.id]: e.target.checked }))}
                           className="h-4 w-4 rounded border-line text-black focus:ring-black accent-black"
                         />
-                        <span className="flex-1 text-xs font-bold uppercase tracking-tight text-[#10100F]">
+                        <span className="flex-1 text-sm font-medium text-[#10100F]">
                           {item.productName} {item.variantAttributes && `(${item.variantAttributes})`}
                         </span>
                         <span className="font-mono text-xs text-[#10100F]/70">
@@ -630,21 +630,21 @@ export default function OrderDetailPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/60 block">
-                      Reason for Return / Exchange
+                    <label className="mb-1.5 block text-[13px] font-medium text-[#10100F]/55">
+                      Reason for return / exchange
                     </label>
                     <textarea
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       placeholder="e.g. Size didn't fit, requesting an exchange for Size M"
                       rows={3}
-                      className="w-full border border-[#e5ded2] bg-white p-3 text-xs text-[#10100F] placeholder:text-[#10100F]/30 focus:border-[#10100F] focus:outline-none transition-colors"
+                      className="w-full rounded-lg border border-[#e3e3e3] bg-white p-3 text-sm text-[#10100F] placeholder:text-[#10100F]/30 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow focus:border-[#10100F] focus:outline-none focus:ring-[3px] focus:ring-[#10100F]/10"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/60 block">
-                      Photos of the Item&rsquo;s Condition <span className="text-rose-700">(required)</span>
+                    <label className="mb-1.5 block text-[13px] font-medium text-[#10100F]/55">
+                      Photos of the item&rsquo;s condition <span className="text-rose-700">(required)</span>
                     </label>
                     <p className="text-[11px] text-[#10100F]/50">
                       At least one photo showing the item as it is now -- this is how we verify condition before approving a refund.
@@ -693,7 +693,7 @@ export default function OrderDetailPage() {
                       onClick={requestReturn}
                       disabled={submittingReturn}
                       type="button"
-                      className="inline-flex items-center justify-center rounded-full bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-40"
+                      className="inline-flex items-center justify-center rounded-lg bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95 disabled:opacity-40"
                     >
                       {submittingReturn ? 'Submitting…' : 'Submit Return Request'}
                     </button>
@@ -711,10 +711,10 @@ export default function OrderDetailPage() {
 
         {/* Right Column: Sticky Receipt Summary */}
         <div className="sticky top-28 space-y-6">
-          <div className="border border-[#e5ded2] bg-white p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="rounded-xl border border-[#e5ded2] bg-white p-6 sm:p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] space-y-6">
             <div className="flex items-center justify-between border-b border-[#e5ded2] pb-4">
-              <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F]">
-                Receipt Breakdown
+              <h2 className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                Receipt breakdown
               </h2>
               <StatusBadge status={order.status} />
             </div>
@@ -733,21 +733,21 @@ export default function OrderDetailPage() {
                 </span>
               </div>
               <div className="flex justify-between text-[#10100F]/70">
-                <span>Express Courier Shipping</span>
+                <span>{order.selectedCarrier ? `${order.selectedCarrier} ${order.selectedServiceLevel ?? ''}`.trim() : 'Shipping'}</span>
                 <span className="font-mono font-medium text-[#10100F]">
                   {order.shippingAmount === 0 ? 'Complimentary' : `$${order.shippingAmount.toFixed(2)}`}
                 </span>
               </div>
               <div className="border-t border-[#e5ded2] pt-4 flex items-baseline justify-between">
                 <div>
-                  <span className="text-sm font-bold uppercase tracking-tight text-[#10100F] block">
-                    Total Paid
+                  <span className="text-sm font-bold uppercase tracking-wide text-[#10100F] block">
+                    Total paid
                   </span>
-                  <span className="text-[10px] font-mono text-[#10100F]/40 uppercase">
-                    Including all taxes & duties
+                  <span className="text-[11px] text-[#10100F]/40">
+                    Including all taxes &amp; duties
                   </span>
                 </div>
-                <span className="text-2xl font-black tracking-tight text-[#10100F] font-mono">
+                <span className="text-2xl font-bold tracking-tight text-[#10100F] font-mono">
                   ${order.total.toFixed(2)} <span className="text-xs font-sans font-bold text-[#10100F]/50">{order.currency || 'USD'}</span>
                 </span>
               </div>
@@ -755,7 +755,7 @@ export default function OrderDetailPage() {
 
             {/* Recipient summary */}
             <div className="rounded-lg bg-[#f9f9f8] p-4 border border-black/5 space-y-2 text-xs">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/40 block">
+              <span className="text-[11px] text-[#10100F]/40 block">
                 Order Destination
               </span>
               <p className="font-semibold text-[#10100F]">{order.email}</p>
@@ -766,7 +766,7 @@ export default function OrderDetailPage() {
 
             <Link
               href="/products"
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-black/15 bg-white px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-[#f5f5f3] transition-all active:scale-95"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-black/15 bg-white px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-[#f5f5f3] transition-all active:scale-95"
             >
               <span>Continue Shopping</span>
               <span>→</span>

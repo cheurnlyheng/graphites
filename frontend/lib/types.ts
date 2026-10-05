@@ -155,11 +155,36 @@ export interface OrderResponse {
   items: OrderItemResponse[];
   shippingAddressValid: boolean | null;
   shippingAddressValidationNote: string | null;
+  /** The delivery method the customer picked at checkout (a real Shippo rate) -- null for orders
+   * placed before this existed. Distinct from carrier/trackingNumber below, which only exist once
+   * a label has actually been bought. */
+  selectedCarrier: string | null;
+  selectedServiceLevel: string | null;
   carrier: string | null;
   trackingNumber: string | null;
   trackingUrl: string | null;
   shippedAt: string | null;
   deliveredAt: string | null;
+}
+
+/** US-only for launch -- see CheckoutController. */
+export interface ShippingAddressRequest {
+  fullName: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string | null;
+  email: string;
+}
+
+export interface CheckoutSessionRequest {
+  shippingAddress: ShippingAddressRequest;
+  carrier: string;
+  serviceLevel: string | null;
+  shippingAmount: number;
 }
 
 export interface ShipmentResponse {

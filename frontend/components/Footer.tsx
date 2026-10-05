@@ -115,7 +115,7 @@ export function Footer() {
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-2.5">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 rounded-full border border-white/20 bg-white/[0.05] focus-within:border-white/60 focus-within:bg-white/[0.08] transition-all">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 rounded-2xl sm:rounded-full border border-white/20 bg-white/[0.05] focus-within:border-white/60 focus-within:bg-white/[0.08] transition-all">
                   <input
                     type="email"
                     required
@@ -126,7 +126,7 @@ export function Footer() {
                   />
                   <button
                     type="submit"
-                    className="rounded-full bg-white text-[#10100F] px-8 py-3 text-xs font-extrabold uppercase tracking-wider hover:bg-neutral-200 transition-all shadow-sm active:scale-95 shrink-0"
+                    className="rounded-xl sm:rounded-full bg-white text-[#10100F] px-8 py-3 text-xs font-extrabold uppercase tracking-wider hover:bg-neutral-200 transition-all shadow-sm active:scale-95 shrink-0"
                   >
                     Join
                   </button>

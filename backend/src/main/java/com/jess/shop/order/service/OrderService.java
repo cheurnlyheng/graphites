@@ -17,6 +17,7 @@ import com.jess.shop.order.entity.OrderStatus;
 import com.jess.shop.order.repository.OrderItemRepository;
 import com.jess.shop.order.repository.OrderRepository;
 import com.jess.shop.payment.service.StripeRefundService;
+import com.jess.shop.shipping.dto.CheckoutShippingDtos.ShippingAddressRequest;
 import com.jess.shop.shipping.dto.ShippoDtos.AddressPayload;
 import com.jess.shop.shipping.dto.ShippoDtos.AddressValidationResponse;
 import com.jess.shop.shipping.entity.Shipment;
@@ -68,16 +69,38 @@ public class OrderService {
         this.shipmentRepository = shipmentRepository;
     }
 
+    /** Called once the customer has picked a real Shippo-quoted delivery method on the checkout page --
+     * address and shipping cost are both known before Stripe is ever involved now, unlike the old flow
+     * where Stripe's hosted page collected the address and the customer picked a flat-rate tier. */
     @Transactional
-    public Order createPendingOrder(UUID cartId, List<CartItemResponse> cartItems) {
+    public Order createPendingOrder(UUID cartId, List<CartItemResponse> cartItems, ShippingAddressRequest shippingAddress,
+                                     String shippingCarrier, String shippingServiceLevel, BigDecimal shippingAmount) {
         BigDecimal subtotal = cartItems.stream().map(CartItemResponse::lineTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal amount = shippingAmount == null ? BigDecimal.ZERO : shippingAmount;
+
+        Address address = Address.builder()
+            .fullName(shippingAddress.fullName())
+            .line1(shippingAddress.line1())
+            .line2(shippingAddress.line2())
+            .city(shippingAddress.city())
+            .state(shippingAddress.state())
+            .postalCode(shippingAddress.postalCode())
+            .country(shippingAddress.country())
+            .phone(shippingAddress.phone())
+            .build();
+        address = addressRepository.save(address);
+        validateShippingAddress(address);
 
         Order order = Order.builder()
             .cartId(cartId)
-            .email("") // filled in from Stripe's collected customer_details.email once payment completes
+            .email(shippingAddress.email() != null ? shippingAddress.email() : "")
             .status(OrderStatus.PENDING)
             .subtotal(subtotal)
-            .total(subtotal) // placeholder -- finalized once Stripe computes tax + shipping
+            .shippingAmount(amount)
+            .shippingAddressId(address.getId())
+            .selectedCarrier(shippingCarrier)
+            .selectedServiceLevel(shippingServiceLevel)
+            .total(subtotal.add(amount)) // placeholder -- finalized once Stripe computes tax
             .currency("USD")
             .createdAt(Instant.now())
             .build();
@@ -162,7 +185,12 @@ public class OrderService {
         order.setStatus(OrderStatus.PAID);
         order.setStripePaymentIntentId(paymentIntentId);
         order.setTaxAmount(taxAmount == null ? BigDecimal.ZERO : taxAmount);
-        order.setShippingAmount(shippingAmount == null ? BigDecimal.ZERO : shippingAmount);
+        // Null here means "nothing new to report" (shipping is now set once, at checkout time, as a
+        // plain line item rather than a Stripe ShippingOption -- see StripeCheckoutService) rather
+        // than "reset to zero", so the real amount picked at checkout survives this update.
+        if (shippingAmount != null) {
+            order.setShippingAmount(shippingAmount);
+        }
         order.setTotal(total == null ? order.getSubtotal() : total);
         order.setPaidAt(Instant.now());
         orderRepository.save(order);
@@ -273,6 +301,7 @@ public class OrderService {
         Instant deliveredAt = shipment != null ? shipment.getDeliveredAt() : null;
         return new OrderResponse(order.getId(), order.getEmail(), order.getStatus(), order.getSubtotal(), order.getTaxAmount(),
             order.getShippingAmount(), order.getTotal(), order.getCurrency(), order.getCreatedAt(), order.getPaidAt(), items,
-            addressValid, addressNote, carrier, trackingNumber, trackingUrl, shippedAt, deliveredAt);
+            addressValid, addressNote, order.getSelectedCarrier(), order.getSelectedServiceLevel(),
+            carrier, trackingNumber, trackingUrl, shippedAt, deliveredAt);
     }
 }

@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { apiFetch, mediaUrl } from '@/lib/api';
 import { getCartToken, setCartToken, getStoredVariantImage } from '@/lib/cart';
 import type { CartResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
 
 export default function CartPage() {
+  const router = useRouter();
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkingOut, setCheckingOut] = useState(false);
   const [productThumbnails, setProductThumbnails] = useState<Record<string, string>>({});
 
   async function load() {
@@ -61,18 +62,8 @@ export default function CartPage() {
     load();
   }
 
-  async function checkout() {
-    setCheckingOut(true);
-    try {
-      const res = await apiFetch<{ checkoutUrl: string }>('/api/checkout/session', {
-        method: 'POST',
-        cartToken: getCartToken()
-      });
-      window.location.href = res.checkoutUrl;
-    } catch {
-      setCheckingOut(false);
-      alert('Could not start checkout. Is the backend Stripe key configured?');
-    }
+  function checkout() {
+    router.push('/checkout');
   }
 
   if (loading) return <p className="text-ink/50">Loading cart…</p>;
@@ -82,7 +73,7 @@ export default function CartPage() {
       <div className="mx-auto max-w-4xl px-4 pt-28 pb-20 text-center">
         <div className="border border-line bg-paper-pure p-12 text-center">
           <p className="text-xs uppercase tracking-widest font-bold text-ink mb-2">Your cart is empty</p>
-          <p className="text-xs text-ink/50 max-w-sm mx-auto">Discover our Scandinavian rainwear silhouettes and weatherproof carry.</p>
+          <p className="text-xs text-ink/50 max-w-sm mx-auto">Discover our vintage-inspired tees, hoodies, and pants.</p>
           <Link href="/products" className="btn-primary mt-6 inline-flex text-xs">
             Continue shopping
           </Link>
@@ -164,9 +155,9 @@ export default function CartPage() {
             <span>Subtotal</span>
             <span>${cart.subtotal.toFixed(2)}</span>
           </div>
-          <p className="text-xs text-ink/40">Tax and final shipping cost are calculated on the next step.</p>
-          <button onClick={checkout} disabled={checkingOut} className="btn-primary w-full">
-            {checkingOut ? 'Redirecting to Stripe…' : 'Checkout'}
+          <p className="text-xs text-ink/40">Delivery method and shipping cost are chosen on the next step.</p>
+          <button onClick={checkout} className="btn-primary w-full">
+            Checkout
           </button>
         </div>
       </div>

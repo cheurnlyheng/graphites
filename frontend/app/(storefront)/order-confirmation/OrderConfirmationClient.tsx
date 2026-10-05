@@ -91,11 +91,11 @@ export function OrderConfirmationClient() {
   if (!sessionId) {
     return (
       <div className={containerClass}>
-        <div className="border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-sm">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#10100F]/40 block mb-3">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+          <span className="text-[11px] uppercase tracking-widest text-[#10100F]/40 block mb-3">
             Checkout Session
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-[#10100F] mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#10100F] mb-4">
             No Session Found
           </h1>
           <p className="text-xs sm:text-sm text-[#10100F]/60 max-w-sm mx-auto mb-8 leading-relaxed">
@@ -103,7 +103,7 @@ export function OrderConfirmationClient() {
           </p>
           <Link
             href="/products"
-            className="inline-flex items-center justify-center rounded-full bg-[#10100F] px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
+            className="inline-flex items-center justify-center rounded-lg bg-[#10100F] px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
           >
             Explore Catalog →
           </Link>
@@ -116,7 +116,7 @@ export function OrderConfirmationClient() {
   if (!order) {
     return (
       <div className={containerClass}>
-        <div className="border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-sm">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
           {failed && gaveUp ? (
             <>
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-700">
@@ -124,10 +124,10 @@ export function OrderConfirmationClient() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
               </div>
-              <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 block mb-2 font-bold">
+              <span className="text-[11px] uppercase tracking-widest text-amber-700 block mb-2 font-bold">
                 Order Verification Delay
               </span>
-              <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#10100F] mb-3">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#10100F] mb-3">
                 Unable to Load Order
               </h1>
               <p className="text-xs text-[#10100F]/60 mb-6 leading-relaxed">
@@ -135,7 +135,7 @@ export function OrderConfirmationClient() {
               </p>
               <button
                 onClick={() => setAttempt((n) => n + 1)}
-                className="inline-flex items-center justify-center rounded-full bg-[#10100F] px-8 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
+                className="inline-flex items-center justify-center rounded-lg bg-[#10100F] px-8 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
               >
                 Try Again
               </button>
@@ -143,7 +143,7 @@ export function OrderConfirmationClient() {
           ) : (
             <div className="py-8 space-y-4">
               <div className="w-8 h-8 border-2 border-black/20 border-t-[#10100F] rounded-full animate-spin mx-auto" />
-              <p className="text-xs font-mono uppercase tracking-widest text-[#10100F]/60">
+              <p className="text-xs uppercase tracking-widest text-[#10100F]/60">
                 Verifying your payment with Stripe…
               </p>
             </div>
@@ -157,12 +157,12 @@ export function OrderConfirmationClient() {
   if (order.status === 'PENDING') {
     return (
       <div className={containerClass}>
-        <div className="border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-sm">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
           <div className="w-10 h-10 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mx-auto mb-4" />
-          <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 font-bold block mb-2">
+          <span className="text-[11px] uppercase tracking-widest text-amber-700 font-bold block mb-2">
             Almost There
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-[#10100F] mb-3">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#10100F] mb-3">
             Confirming Payment…
           </h1>
           {gaveUp ? (
@@ -172,7 +172,7 @@ export function OrderConfirmationClient() {
               </p>
               <button
                 onClick={() => setAttempt((n) => n + 1)}
-                className="inline-flex items-center justify-center rounded-full bg-[#10100F] px-8 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
+                className="inline-flex items-center justify-center rounded-lg bg-[#10100F] px-8 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all active:scale-95"
               >
                 Check Status Again
               </button>
@@ -200,13 +200,13 @@ export function OrderConfirmationClient() {
           <span className="text-xs font-mono font-medium text-[#10100F]/50">
             ID: #{order.id.slice(0, 8).toUpperCase()}
           </span>
-          <span className="text-xs font-mono text-[#10100F]/30">·</span>
-          <span className="text-xs font-mono text-[#10100F]/50">
+          <span className="text-xs text-[#10100F]/30">·</span>
+          <span className="text-xs text-[#10100F]/50">
             {formatDate(order.createdAt)}
           </span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#10100F] uppercase leading-[0.95] mb-5">
+        <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#10100F] mb-5">
           Thank you for your order.
         </h1>
 
@@ -221,7 +221,7 @@ export function OrderConfirmationClient() {
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
             href={`/orders/${order.id}`}
-            className="inline-flex items-center gap-2 rounded-full bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#10100F] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
           >
             <span>Track Delivery Status</span>
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -231,7 +231,7 @@ export function OrderConfirmationClient() {
 
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-[#f5f5f3] transition-all active:scale-95"
+            className="inline-flex items-center gap-2 rounded-lg border border-black/15 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-[#f5f5f3] transition-all active:scale-95"
           >
             Continue Shopping
           </Link>
@@ -239,7 +239,7 @@ export function OrderConfirmationClient() {
           <button
             onClick={() => window.print()}
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[#10100F]/70 hover:text-[#10100F] hover:bg-black/5 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[#10100F]/70 hover:text-[#10100F] hover:bg-black/5 transition-all"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24-1.07-.37-2.18-.37-3.329 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.149-.13 2.259-.37 3.329m-15.26 0A8.003 8.003 0 0012 21a8.003 8.003 0 007.64-5.171m-15.28 0a8.003 8.003 0 010-3.658m15.28 3.658a8.003 8.003 0 000-3.658M9 12h6m-3-3v6" />
@@ -256,10 +256,10 @@ export function OrderConfirmationClient() {
           {/* Items Section */}
           <div>
             <div className="flex items-center justify-between border-b border-[#e5ded2] pb-3 mb-4">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-[#10100F]/60">
-                Purchased Silhouettes ({order.items.length})
+              <span className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                Purchased items ({order.items.length})
               </span>
-              <span className="text-[11px] font-mono text-[#10100F]/40">
+              <span className="text-[11px] text-[#10100F]/40">
                 Fulfilled by GRAPHITES
               </span>
             </div>
@@ -282,7 +282,7 @@ export function OrderConfirmationClient() {
                             className="object-cover object-center"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-[10px] text-black/30 font-mono tracking-widest">
+                          <div className="h-full w-full flex items-center justify-center text-[10px] text-black/30 tracking-widest">
                             GRAPHITES
                           </div>
                         )}
@@ -290,23 +290,23 @@ export function OrderConfirmationClient() {
 
                       {/* Product Details */}
                       <div className="min-w-0">
-                        <p className="font-extrabold uppercase tracking-tight text-[#10100F] text-base truncate">
+                        <p className="font-semibold text-[#10100F] text-base truncate">
                           {item.productName}
                         </p>
                         {item.variantAttributes && (
-                          <span className="inline-block mt-1 text-[11px] font-mono font-medium uppercase tracking-wider text-[#10100F]/60 bg-black/5 px-2 py-0.5 rounded">
+                          <span className="inline-block mt-1 text-[11px] font-medium text-[#10100F]/60 bg-black/5 px-2 py-0.5 rounded">
                             {item.variantAttributes}
                           </span>
                         )}
-                        <p className="mt-1.5 text-xs text-[#10100F]/50 font-mono">
-                          QTY {item.quantity} · ${item.unitPrice.toFixed(2)} each
+                        <p className="mt-1.5 text-xs text-[#10100F]/50">
+                          Qty {item.quantity} · ${item.unitPrice.toFixed(2)} each
                         </p>
                       </div>
                     </div>
 
                     {/* Line Total */}
                     <div className="text-right shrink-0">
-                      <p className="text-base font-bold text-[#10100F] tracking-tight">
+                      <p className="text-base font-bold text-[#10100F] tracking-tight font-mono">
                         ${item.lineTotal.toFixed(2)}
                       </p>
                     </div>
@@ -317,12 +317,12 @@ export function OrderConfirmationClient() {
           </div>
 
           {/* Logistics & Dispatch Info Grid */}
-          <div className="grid gap-4 sm:grid-cols-3 border border-[#e5ded2] bg-[#fbfbfb] p-6">
+          <div className="grid gap-4 sm:grid-cols-3 rounded-xl border border-[#e5ded2] bg-[#fbfbfb] p-6">
             <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/40 block">
+              <span className="text-[11px] text-[#10100F]/40 block">
                 Fulfillment Hub
               </span>
-              <p className="text-xs font-bold uppercase tracking-tight text-[#10100F]">
+              <p className="text-xs font-bold text-[#10100F]">
                 Central Dispatch
               </p>
               <p className="text-[11px] text-[#10100F]/60 leading-relaxed">
@@ -331,11 +331,11 @@ export function OrderConfirmationClient() {
             </div>
 
             <div className="space-y-1 sm:border-l sm:border-[#e5ded2] sm:pl-4">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/40 block">
+              <span className="text-[11px] text-[#10100F]/40 block">
                 Courier Service
               </span>
-              <p className="text-xs font-bold uppercase tracking-tight text-[#10100F]">
-                Carbon-Neutral Express
+              <p className="text-xs font-bold text-[#10100F]">
+                {order.selectedCarrier ? `${order.selectedCarrier} ${order.selectedServiceLevel ?? ''}`.trim() : 'Standard Shipping'}
               </p>
               <p className="text-[11px] text-[#10100F]/60 leading-relaxed">
                 Tracking becomes active upon carrier scan.
@@ -343,10 +343,10 @@ export function OrderConfirmationClient() {
             </div>
 
             <div className="space-y-1 sm:border-l sm:border-[#e5ded2] sm:pl-4">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/40 block">
+              <span className="text-[11px] text-[#10100F]/40 block">
                 Assistance
               </span>
-              <p className="text-xs font-bold uppercase tracking-tight text-[#10100F]">
+              <p className="text-xs font-bold text-[#10100F]">
                 Customer Care
               </p>
               <p className="text-[11px] text-[#10100F]/60 leading-relaxed">
@@ -358,10 +358,10 @@ export function OrderConfirmationClient() {
 
         {/* Right Column: Sticky Receipt Summary */}
         <div className="sticky top-28 space-y-6">
-          <div className="border border-[#e5ded2] bg-white p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="rounded-xl border border-[#e5ded2] bg-white p-6 sm:p-8 shadow-[0_2px_10px_rgba(0,0,0,0.04)] space-y-6">
             <div className="flex items-center justify-between border-b border-[#e5ded2] pb-4">
-              <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F]">
-                Receipt Breakdown
+              <h2 className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
+                Receipt breakdown
               </h2>
               <StatusBadge status={order.status} />
             </div>
@@ -380,21 +380,21 @@ export function OrderConfirmationClient() {
                 </span>
               </div>
               <div className="flex justify-between text-[#10100F]/70">
-                <span>Express Courier Shipping</span>
+                <span>{order.selectedCarrier ? `${order.selectedCarrier} ${order.selectedServiceLevel ?? ''}`.trim() : 'Shipping'}</span>
                 <span className="font-mono font-medium text-[#10100F]">
                   {order.shippingAmount === 0 ? 'Complimentary' : `$${order.shippingAmount.toFixed(2)}`}
                 </span>
               </div>
               <div className="border-t border-[#e5ded2] pt-4 flex items-baseline justify-between">
                 <div>
-                  <span className="text-sm font-bold uppercase tracking-tight text-[#10100F] block">
-                    Total Amount
+                  <span className="text-sm font-bold uppercase tracking-wide text-[#10100F] block">
+                    Total amount
                   </span>
-                  <span className="text-[10px] font-mono text-[#10100F]/40 uppercase">
-                    Including all taxes & duties
+                  <span className="text-[11px] text-[#10100F]/40">
+                    Including all taxes &amp; duties
                   </span>
                 </div>
-                <span className="text-2xl font-black tracking-tight text-[#10100F] font-mono">
+                <span className="text-2xl font-bold tracking-tight text-[#10100F] font-mono">
                   ${order.total.toFixed(2)} <span className="text-xs font-sans font-bold text-[#10100F]/50">{order.currency || 'USD'}</span>
                 </span>
               </div>
@@ -410,7 +410,7 @@ export function OrderConfirmationClient() {
 
             <Link
               href={`/orders/${order.id}`}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#10100F] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#10100F] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 transition-all shadow-sm active:scale-95"
             >
               <span>View Tracking Page</span>
               <span>→</span>

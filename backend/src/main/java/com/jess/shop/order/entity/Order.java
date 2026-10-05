@@ -77,6 +77,15 @@ public class Order {
     @Column(name = "billing_address_id")
     private UUID billingAddressId;
 
+    /** The delivery method the customer picked at checkout, from a real Shippo rate quote -- lets the
+     * admin fulfillment queue buy the matching label instead of guessing. Descriptive only (provider
+     * name + service level display name), not the Shippo rate object id, which expires. */
+    @Column(name = "selected_carrier", length = 100)
+    private String selectedCarrier;
+
+    @Column(name = "selected_service_level", length = 200)
+    private String selectedServiceLevel;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

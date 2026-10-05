@@ -3,14 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useCart } from './CartContext';
 import { apiFetch, mediaUrl } from '@/lib/api';
-import { getCartToken, getStoredVariantImage } from '@/lib/cart';
+import { getStoredVariantImage } from '@/lib/cart';
 import type { PageResponse, ProductSummaryResponse, ProductDetailResponse } from '@/lib/types';
 
 export function CartDrawer() {
+  const router = useRouter();
   const { cart, isOpen, closeCart, updateQty, removeItem, itemCount, isMutating, addItem } = useCart();
-  const [checkingOut, setCheckingOut] = useState(false);
   const [productThumbnails, setProductThumbnails] = useState<Record<string, string>>({});
   const [recommendedProducts, setRecommendedProducts] = useState<ProductSummaryResponse[]>([]);
   const [addingRecommendedId, setAddingRecommendedId] = useState<string | null>(null);
@@ -63,18 +64,9 @@ export function CartDrawer() {
     };
   }, [isOpen]);
 
-  async function handleCheckout() {
-    setCheckingOut(true);
-    try {
-      const res = await apiFetch<{ checkoutUrl: string }>('/api/checkout/session', {
-        method: 'POST',
-        cartToken: getCartToken()
-      });
-      window.location.href = res.checkoutUrl;
-    } catch {
-      setCheckingOut(false);
-      alert('Could not initiate checkout. Please ensure the backend is running with Stripe configured.');
-    }
+  function handleCheckout() {
+    closeCart();
+    router.push('/checkout');
   }
 
   async function handleQuickAdd(product: ProductSummaryResponse) {
@@ -128,7 +120,7 @@ export function CartDrawer() {
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <h3 className="text-sm font-bold text-[#10100F]">Your shopping cart is empty</h3>
                 <p className="mt-1.5 text-xs text-[#767676] max-w-xs">
-                  Discover our Scandinavian rainwear silhouettes and weatherproof carry.
+                  Discover our vintage-inspired tees, hoodies, and pants.
                 </p>
                 <Link
                   href="/products"
@@ -306,10 +298,10 @@ export function CartDrawer() {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={checkingOut || isMutating}
+                  disabled={isMutating}
                   className="rounded-full bg-[#2a2a2a] hover:bg-black text-white px-8 py-2.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
                 >
-                  {checkingOut ? 'Checkout…' : 'Checkout'}
+                  Checkout
                 </button>
               </div>
             </div>
