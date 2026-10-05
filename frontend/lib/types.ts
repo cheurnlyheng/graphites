@@ -76,6 +76,9 @@ export interface ProductSummaryResponse {
   slug: string;
   price: number;
   thumbnailUrl: string | null;
+  /** Every product photo, not just the thumbnail -- lets the storefront grid's hover/dot image
+   * switcher work straight off the list response, with no per-product detail fetch needed. */
+  images: string[];
   inStock: boolean;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
 }

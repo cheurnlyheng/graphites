@@ -6,8 +6,9 @@ import Image from 'next/image';
 import { mediaUrl } from '@/lib/api';
 import type { ProductSummaryResponse } from '@/lib/types';
 
+// status is optional because home-section products (SectionProduct) don't carry one -- every other
+// field, including images, is already present on both shapes.
 interface ExtendedProductSummary extends Omit<ProductSummaryResponse, 'status'> {
-  images?: string[];
   status?: ProductSummaryResponse['status'];
 }
 

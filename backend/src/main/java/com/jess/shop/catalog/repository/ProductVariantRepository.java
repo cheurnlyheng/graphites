@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +14,10 @@ import java.util.UUID;
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, UUID> {
 
     List<ProductVariant> findByProductId(UUID productId);
+
+    // Batch form for listing pages -- one query for every product on the page instead of one
+    // query per product (see ProductService.toSummaries).
+    List<ProductVariant> findByProductIdIn(Collection<UUID> productIds);
 
     Optional<ProductVariant> findBySku(String sku);
 

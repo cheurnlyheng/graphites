@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductFilterBar } from '@/components/ProductFilterBar';
-import type { CategoryResponse, PageResponse, ProductSummaryResponse, ProductDetailResponse } from '@/lib/types';
+import type { CategoryResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
 
 export default async function ProductsPage({
   searchParams
@@ -15,40 +15,15 @@ export default async function ProductsPage({
   if (resolvedSearchParams.categoryId) params.set('categoryId', resolvedSearchParams.categoryId);
   params.set('size', '36');
 
-  let products: (ProductSummaryResponse & { images?: string[] })[] = [];
-  try {
-    const page = await apiFetch<PageResponse<ProductSummaryResponse>>(`/api/products?${params.toString()}`);
-    if (page?.content && page.content.length > 0) {
-      products = await Promise.all(
-        page.content.map(async (p) => {
-          try {
-            const detail = await apiFetch<ProductDetailResponse>(`/api/products/${p.slug}`);
-            const backendImages = detail?.images && detail.images.length > 0
-              ? detail.images.map((img) => img.url).filter(Boolean)
-              : [];
-            return {
-              ...p,
-              images: backendImages.length > 0 ? backendImages : (p.thumbnailUrl ? [p.thumbnailUrl] : [])
-            };
-          } catch {
-            return {
-              ...p,
-              images: p.thumbnailUrl ? [p.thumbnailUrl] : []
-            };
-          }
-        })
-      );
-    }
-  } catch {
-    products = [];
-  }
-
-  let categories: CategoryResponse[] = [];
-  try {
-    categories = await apiFetch<CategoryResponse[]>('/api/categories');
-  } catch {
-    categories = [];
-  }
+  // One list call now carries every product's full image array (see ProductSummaryResponse on the
+  // backend) -- this used to also fetch each product's full detail individually just for its
+  // photos, which meant a 2-item catalog still cost 1 + N backend round trips on every page load.
+  const [products, categories] = await Promise.all([
+    apiFetch<PageResponse<ProductSummaryResponse>>(`/api/products?${params.toString()}`)
+      .then((page) => page?.content ?? [])
+      .catch(() => [] as ProductSummaryResponse[]),
+    apiFetch<CategoryResponse[]>('/api/categories').catch(() => [] as CategoryResponse[])
+  ]);
 
   return (
     <div className="w-full min-h-screen pt-20 sm:pt-24 pb-20">

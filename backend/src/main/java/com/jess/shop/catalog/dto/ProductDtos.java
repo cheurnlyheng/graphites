@@ -18,7 +18,11 @@ public class ProductDtos {
 
     public record ImageResponse(UUID id, String colorGroup, String url, int sortOrder) {}
 
-    public record ProductSummaryResponse(UUID id, String name, String slug, BigDecimal price, String thumbnailUrl, boolean inStock, ProductStatus status) {}
+    // images carries every product photo (not just the thumbnail) so the storefront grid's
+    // hover/dot image switcher works from this one list call -- without it, the frontend had to
+    // fetch each product's full detail individually just to get its other photos (see ProductCard).
+    public record ProductSummaryResponse(UUID id, String name, String slug, BigDecimal price, String thumbnailUrl,
+                                          List<String> images, boolean inStock, ProductStatus status) {}
 
     public record ProductDetailResponse(
         UUID id, String name, String slug, String description, UUID categoryId, ProductStatus status, String taxCode,

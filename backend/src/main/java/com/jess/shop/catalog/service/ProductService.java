@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -44,7 +46,7 @@ public class ProductService {
         } else {
             page = productRepository.findByStatus(ProductStatus.ACTIVE, pageable);
         }
-        return page.map(this::toSummary);
+        return toSummaries(page);
     }
 
     public ProductDetailResponse getActiveBySlug(String slug) {
@@ -57,7 +59,7 @@ public class ProductService {
     // ---- Admin reads/writes (any status) ----
 
     public Page<ProductSummaryResponse> adminList(Pageable pageable) {
-        return productRepository.findAll(pageable).map(this::toSummary);
+        return toSummaries(productRepository.findAll(pageable));
     }
 
     public ProductDetailResponse adminGet(UUID id) {
@@ -208,12 +210,31 @@ public class ProductService {
         return imageRepository.save(image);
     }
 
-    private ProductSummaryResponse toSummary(Product product) {
-        List<ProductVariant> variants = variantRepository.findByProductId(product.getId());
+    /** Batch-loads variants and images for every product on the page in 2 queries total, instead of
+     * 2 queries per product -- a plain per-product toSummary() turned a 36-item page into 73 DB
+     * round trips, which is cheap locally but adds up fast against a network-hosted database. */
+    private Page<ProductSummaryResponse> toSummaries(Page<Product> page) {
+        List<UUID> productIds = page.getContent().stream().map(Product::getId).toList();
+        if (productIds.isEmpty()) {
+            return page.map(p -> toSummary(p, List.of(), List.of()));
+        }
+
+        Map<UUID, List<ProductVariant>> variantsByProduct = variantRepository.findByProductIdIn(productIds)
+            .stream().collect(Collectors.groupingBy(ProductVariant::getProductId));
+        Map<UUID, List<ProductImage>> imagesByProduct = imageRepository.findByProductIdInOrderBySortOrderAsc(productIds)
+            .stream().collect(Collectors.groupingBy(ProductImage::getProductId));
+
+        return page.map(product -> toSummary(product,
+            variantsByProduct.getOrDefault(product.getId(), List.of()),
+            imagesByProduct.getOrDefault(product.getId(), List.of())));
+    }
+
+    private ProductSummaryResponse toSummary(Product product, List<ProductVariant> variants, List<ProductImage> productImages) {
         boolean inStock = variants.stream().anyMatch(v -> v.getStockQty() > 0);
-        String thumbnail = imageRepository.findByProductIdOrderBySortOrderAsc(product.getId())
-            .stream().findFirst().map(ProductImage::getUrl).orElse(null);
-        return new ProductSummaryResponse(product.getId(), product.getName(), product.getSlug(), product.getPrice(), thumbnail, inStock, product.getStatus());
+        List<String> images = productImages.stream().map(ProductImage::getUrl).toList();
+        String thumbnail = images.isEmpty() ? null : images.get(0);
+        return new ProductSummaryResponse(product.getId(), product.getName(), product.getSlug(), product.getPrice(),
+            thumbnail, images, inStock, product.getStatus());
     }
 
     private ProductDetailResponse toDetail(Product product) {
