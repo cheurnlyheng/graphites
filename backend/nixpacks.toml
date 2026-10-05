@@ -1,0 +1,6 @@
+# Tests (including a Testcontainers-backed integration test that spins up a real disposable
+# Postgres via Docker) already ran locally before this was ever pushed. Running them again during
+# Railway's build -- a sandbox without real Docker access -- just burns the build container's
+# memory trying to reach a Docker daemon that isn't there, which was crashing the build.
+[phases.build]
+cmds = ["mvn -B -DskipTests clean package"]
