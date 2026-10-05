@@ -82,3 +82,25 @@ export async function uploadImage(file: File, token: string, trim = false): Prom
   }
   return (await res.json()) as UploadImageResult;
 }
+
+/** Uploads a single condition-proof photo for a return request. No admin token -- a guest attaching
+ * proof to their own return has the same standing as viewing/cancelling the order itself (the
+ * unguessable order id is the only credential this whole guest-checkout model relies on). */
+export async function uploadReturnPhoto(orderId: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/api/orders/${orderId}/returns/photos`, {
+    method: 'POST',
+    body: form
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      message = (await res.json()).message || message;
+    } catch {
+      // response body wasn't JSON -- fall back to statusText
+    }
+    throw new ApiError(res.status, message);
+  }
+  return ((await res.json()) as { url: string }).url;
+}

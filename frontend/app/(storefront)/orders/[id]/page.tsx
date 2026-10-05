@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { apiFetch, mediaUrl } from '@/lib/api';
+import { apiFetch, mediaUrl, uploadReturnPhoto } from '@/lib/api';
 import { saveLastOrderId } from '@/lib/orders';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { OrderResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
@@ -25,6 +25,9 @@ export default function OrderDetailPage() {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
@@ -66,6 +69,24 @@ export default function OrderDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  async function onPhotoChosen(file: File | undefined) {
+    if (!file) return;
+    setPhotoError(null);
+    setUploadingPhoto(true);
+    try {
+      const url = await uploadReturnPhoto(params.id, file);
+      setPhotos((p) => [...p, url]);
+    } catch {
+      setPhotoError('Could not upload that photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  function removePhoto(url: string) {
+    setPhotos((p) => p.filter((u) => u !== url));
+  }
+
   async function requestReturn() {
     const items = Object.entries(selected)
       .filter(([, v]) => v)
@@ -74,12 +95,17 @@ export default function OrderDetailPage() {
       setStatus('Please select at least one item to return.');
       return;
     }
+    if (photos.length === 0) {
+      setStatus('Please upload at least one photo showing the item’s condition.');
+      return;
+    }
     setSubmittingReturn(true);
     try {
-      await apiFetch(`/api/orders/${params.id}/returns`, { method: 'POST', body: { items, reason } });
+      await apiFetch(`/api/orders/${params.id}/returns`, { method: 'POST', body: { items, reason, photoUrls: photos } });
       setStatus('Return requested successfully — we will email you with return label instructions once reviewed.');
       setSelected({});
       setReason('');
+      setPhotos([]);
     } catch {
       setStatus('Could not submit the return request. Please try again or reach out to concierge.');
     } finally {
@@ -614,6 +640,52 @@ export default function OrderDetailPage() {
                       rows={3}
                       className="w-full border border-[#e5ded2] bg-white p-3 text-xs text-[#10100F] placeholder:text-[#10100F]/30 focus:border-[#10100F] focus:outline-none transition-colors"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-mono uppercase tracking-widest text-[#10100F]/60 block">
+                      Photos of the Item&rsquo;s Condition <span className="text-rose-700">(required)</span>
+                    </label>
+                    <p className="text-[11px] text-[#10100F]/50">
+                      At least one photo showing the item as it is now -- this is how we verify condition before approving a refund.
+                    </p>
+                    <div className="flex flex-wrap gap-2.5 pt-1">
+                      {photos.map((url) => (
+                        <div key={url} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-[#e5ded2]">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- just-uploaded proof photos, not a managed product image */}
+                          <img src={mediaUrl(url)} alt="Return condition proof" className="h-full w-full object-cover" />
+                          <button
+                            onClick={() => removePhoto(url)}
+                            type="button"
+                            aria-label="Remove photo"
+                            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <label className="flex h-20 w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[#e5ded2] text-[10px] font-bold uppercase tracking-wider text-[#10100F]/50 hover:border-[#10100F] hover:text-[#10100F] transition-colors">
+                        {uploadingPhoto ? (
+                          <span>Uploading…</span>
+                        ) : (
+                          <>
+                            <span className="text-lg leading-none">+</span>
+                            <span>Add Photo</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="hidden"
+                          disabled={uploadingPhoto}
+                          onChange={(e) => {
+                            onPhotoChosen(e.target.files?.[0]);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {photoError && <p className="text-xs font-medium text-rose-700">{photoError}</p>}
                   </div>
 
                   <div className="flex items-center gap-3 pt-2">

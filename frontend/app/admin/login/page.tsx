@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, ApiError } from '@/lib/api';
 import { setAdminAuth } from '@/lib/auth';
 import type { AuthResponse } from '@/lib/types';
 
@@ -24,12 +24,8 @@ export default function AdminLoginPage() {
       const auth = await apiFetch<AuthResponse>(path, { method: 'POST', body: { email, password } });
       setAdminAuth(auth);
       router.push('/admin');
-    } catch {
-      setError(
-        bootstrapMode
-          ? 'Could not create the first admin (one may already exist).'
-          : 'Invalid email or password.'
-      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong -- check your connection and try again.');
     } finally {
       setLoading(false);
     }

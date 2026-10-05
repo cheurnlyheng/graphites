@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, mediaUrl } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { PageResponse, ReturnResponse } from '@/lib/types';
@@ -191,6 +191,29 @@ export default function AdminReturnsPage() {
                   <p className="italic leading-relaxed font-serif text-[#10100F]">
                     &ldquo;{r.reason}&rdquo;
                   </p>
+                </div>
+              )}
+
+              {/* Condition Proof Photos -- check these before approving a refund */}
+              {r.photoUrls.length > 0 && (
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/70 block mb-2">
+                    Condition Photos ({r.photoUrls.length})
+                  </span>
+                  <div className="flex flex-wrap gap-2.5">
+                    {r.photoUrls.map((url) => (
+                      <a
+                        key={url}
+                        href={mediaUrl(url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-[#e5ded2] hover:border-[#10100F] transition-colors"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- customer-submitted proof photo, not a managed product image */}
+                        <img src={mediaUrl(url)} alt="Return condition proof" className="h-full w-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
 

@@ -2,6 +2,7 @@ package com.jess.shop.returns.service;
 
 import com.jess.shop.catalog.repository.ProductVariantRepository;
 import com.jess.shop.common.exception.ResourceNotFoundException;
+import com.jess.shop.content.service.ImageStorageService;
 import com.jess.shop.order.entity.Order;
 import com.jess.shop.order.entity.OrderItem;
 import com.jess.shop.order.entity.OrderStatus;
@@ -10,9 +11,11 @@ import com.jess.shop.order.repository.OrderRepository;
 import com.jess.shop.payment.service.StripeRefundService;
 import com.jess.shop.returns.dto.ReturnDtos.*;
 import com.jess.shop.returns.entity.ReturnItem;
+import com.jess.shop.returns.entity.ReturnPhoto;
 import com.jess.shop.returns.entity.ReturnRequest;
 import com.jess.shop.returns.entity.ReturnStatus;
 import com.jess.shop.returns.repository.ReturnItemRepository;
+import com.jess.shop.returns.repository.ReturnPhotoRepository;
 import com.jess.shop.returns.repository.ReturnRequestRepository;
 import com.stripe.exception.StripeException;
 import org.slf4j.Logger;
@@ -21,7 +24,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -34,20 +39,32 @@ public class ReturnService {
 
     private final ReturnRequestRepository returnRequestRepository;
     private final ReturnItemRepository returnItemRepository;
+    private final ReturnPhotoRepository returnPhotoRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductVariantRepository variantRepository;
     private final StripeRefundService stripeRefundService;
+    private final ImageStorageService imageStorageService;
 
     public ReturnService(ReturnRequestRepository returnRequestRepository, ReturnItemRepository returnItemRepository,
-                          OrderRepository orderRepository, OrderItemRepository orderItemRepository,
-                          ProductVariantRepository variantRepository, StripeRefundService stripeRefundService) {
+                          ReturnPhotoRepository returnPhotoRepository, OrderRepository orderRepository,
+                          OrderItemRepository orderItemRepository, ProductVariantRepository variantRepository,
+                          StripeRefundService stripeRefundService, ImageStorageService imageStorageService) {
         this.returnRequestRepository = returnRequestRepository;
         this.returnItemRepository = returnItemRepository;
+        this.returnPhotoRepository = returnPhotoRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.variantRepository = variantRepository;
         this.stripeRefundService = stripeRefundService;
+        this.imageStorageService = imageStorageService;
+    }
+
+    /** Lets a guest attach condition-proof photos to a return before/while filling out the rest of the
+     * form -- no admin auth available to them, so this can't reuse the admin uploads endpoint. Never
+     * trims transparent padding (that's a hanging-rail-cutout-only concern, irrelevant here). */
+    public String uploadPhoto(MultipartFile file) throws IOException {
+        return imageStorageService.store(file, false).url();
     }
 
     @Transactional
@@ -77,6 +94,15 @@ public class ReturnService {
                 .reason(itemReq.reason())
                 .build();
             returnItemRepository.save(item);
+        }
+
+        int sortOrder = 0;
+        for (String url : request.photoUrls()) {
+            returnPhotoRepository.save(ReturnPhoto.builder()
+                .returnRequestId(returnRequest.getId())
+                .url(url)
+                .sortOrder(sortOrder++)
+                .build());
         }
 
         return toResponse(returnRequest);
@@ -158,7 +184,9 @@ public class ReturnService {
                 return new ReturnItemResponse(i.getId(), i.getOrderItemId(), productName, i.getQuantity(), i.getReason());
             })
             .toList();
+        List<String> photoUrls = returnPhotoRepository.findByReturnRequestIdOrderBySortOrderAsc(returnRequest.getId())
+            .stream().map(ReturnPhoto::getUrl).toList();
         return new ReturnResponse(returnRequest.getId(), returnRequest.getOrderId(), returnRequest.getStatus(),
-            returnRequest.getReason(), returnRequest.getRequestedAt(), returnRequest.getResolvedAt(), items);
+            returnRequest.getReason(), returnRequest.getRequestedAt(), returnRequest.getResolvedAt(), items, photoUrls);
     }
 }

@@ -203,6 +203,7 @@ export interface ReturnResponse {
   requestedAt: string;
   resolvedAt: string | null;
   items: ReturnItemResponse[];
+  photoUrls: string[];
 }
 
 export interface ShippingRateOption {
