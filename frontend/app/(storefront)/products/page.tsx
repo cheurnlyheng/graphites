@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
-import type { PageResponse, ProductSummaryResponse } from '@/lib/types';
+import { ProductFilterBar } from '@/components/ProductFilterBar';
+import type { CategoryResponse, PageResponse, ProductSummaryResponse, ProductDetailResponse } from '@/lib/types';
 
 export default async function ProductsPage({
   searchParams
@@ -11,41 +13,80 @@ export default async function ProductsPage({
   const params = new URLSearchParams();
   if (resolvedSearchParams.search) params.set('search', resolvedSearchParams.search);
   if (resolvedSearchParams.categoryId) params.set('categoryId', resolvedSearchParams.categoryId);
-  params.set('size', '24');
+  params.set('size', '36');
 
-  let products: ProductSummaryResponse[] = [];
+  let products: (ProductSummaryResponse & { images?: string[] })[] = [];
   try {
     const page = await apiFetch<PageResponse<ProductSummaryResponse>>(`/api/products?${params.toString()}`);
-    products = page.content;
+    if (page?.content && page.content.length > 0) {
+      products = await Promise.all(
+        page.content.map(async (p) => {
+          try {
+            const detail = await apiFetch<ProductDetailResponse>(`/api/products/${p.slug}`);
+            const backendImages = detail?.images && detail.images.length > 0
+              ? detail.images.map((img) => img.url).filter(Boolean)
+              : [];
+            return {
+              ...p,
+              images: backendImages.length > 0 ? backendImages : (p.thumbnailUrl ? [p.thumbnailUrl] : [])
+            };
+          } catch {
+            return {
+              ...p,
+              images: p.thumbnailUrl ? [p.thumbnailUrl] : []
+            };
+          }
+        })
+      );
+    }
   } catch {
     products = [];
   }
 
+  let categories: CategoryResponse[] = [];
+  try {
+    categories = await apiFetch<CategoryResponse[]>('/api/categories');
+  } catch {
+    categories = [];
+  }
+
   return (
-    <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
-        <h1 className="page-heading">Shop</h1>
-        <form className="flex gap-2">
-          <input
-            type="text"
-            name="search"
-            defaultValue={resolvedSearchParams.search}
-            placeholder="Search products..."
-            className="input w-64"
-          />
-          <button type="submit" className="btn-primary">
-            Search
-          </button>
-        </form>
+    <div className="w-full min-h-screen pt-20 sm:pt-24 pb-20">
+      {/* Header & Filter Bar with comfortable side padding */}
+      <div className="px-4 sm:px-8 lg:px-12">
+        <ProductFilterBar
+          totalItems={products.length}
+          currentSearch={resolvedSearchParams.search}
+          categories={categories}
+        />
       </div>
+
+      {/* 4-Column Product Grid: ZERO margin-x, fills full screen width edge-to-edge like Rains */}
       {products.length > 0 ? (
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-0 sm:gap-px bg-[#e5ded2]/40 border-t border-b border-black/[0.06]">
           {products.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </div>
       ) : (
-        <p className="rounded-lg border border-dashed border-line p-8 text-center text-ink/50">No products found.</p>
+        <div className="mx-4 sm:mx-8 lg:mx-12 flex flex-col items-center justify-center border border-dashed border-line bg-paper-pure/50 p-16 text-center">
+          <p className="font-heading text-lg font-semibold uppercase tracking-wider text-ink">
+            No products found
+          </p>
+          <p className="mt-1 text-xs text-ink/50">
+            {resolvedSearchParams.search
+              ? `No items match the query "${resolvedSearchParams.search}".`
+              : 'Add some products from the admin panel to populate the catalog.'}
+          </p>
+          <div className="mt-6 flex gap-4">
+            <Link href="/products" className="btn-secondary text-xs">
+              Clear Filters
+            </Link>
+            <Link href="/admin/products/new" className="btn-primary text-xs">
+              Add Product (Admin)
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

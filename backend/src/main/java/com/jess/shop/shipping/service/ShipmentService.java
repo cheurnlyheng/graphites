@@ -88,9 +88,15 @@ public class ShipmentService {
         return new ShippingRatesResponse(options);
     }
 
+    /** Buying a label spends money, so the order row is locked for the whole purchase: a double-clicked button (or two
+     * admins) makes the second request wait, find the order already SHIPPED, and stop -- instead of buying twice. */
     @Transactional
     public ShipmentDto buyLabel(UUID orderId, BuyLabelRequest request) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+        Order order = orderRepository.findAndLockById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+        if (!request.returnLabel()) {
+            requireReadyToShip(order);
+        }
 
         TransactionResponse transaction = shippoService.buyLabel(request.rateObjectId());
         if (!"SUCCESS".equalsIgnoreCase(transaction.status())) {
@@ -121,6 +127,23 @@ public class ShipmentService {
 
         return new ShipmentDto(shipment.getId(), orderId, shipment.getCarrier(), shipment.getTrackingNumber(),
             shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt());
+    }
+
+    private void requireReadyToShip(Order order) {
+        switch (order.getStatus()) {
+            case PAID -> {
+                if (order.getShippingAddressId() == null) {
+                    throw new IllegalStateException("This order has no shipping address, so a label can't be bought for it");
+                }
+            }
+            case PENDING -> throw new IllegalStateException("This order isn't paid yet -- a label can only be bought once payment is confirmed");
+            case SHIPPED, DELIVERED -> {
+                String tracking = shipmentRepository.findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(order.getId())
+                    .map(Shipment::getTrackingNumber).orElse(null);
+                throw new IllegalStateException("A label has already been bought for this order" + (tracking != null ? " (tracking " + tracking + ")" : ""));
+            }
+            case CANCELLED -> throw new IllegalStateException("This order was cancelled, so no label can be bought for it");
+        }
     }
 
     private AddressPayload warehouseAddress() {

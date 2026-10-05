@@ -1,6 +1,8 @@
 package com.jess.shop.catalog.dto;
 
 import com.jess.shop.catalog.entity.ProductStatus;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -16,11 +18,12 @@ public class ProductDtos {
 
     public record ImageResponse(UUID id, String colorGroup, String url, int sortOrder) {}
 
-    public record ProductSummaryResponse(UUID id, String name, String slug, BigDecimal price, String thumbnailUrl, boolean inStock) {}
+    public record ProductSummaryResponse(UUID id, String name, String slug, BigDecimal price, String thumbnailUrl, boolean inStock, ProductStatus status) {}
 
     public record ProductDetailResponse(
         UUID id, String name, String slug, String description, UUID categoryId, ProductStatus status, String taxCode,
-        BigDecimal price, List<VariantResponse> variants, List<ImageResponse> images
+        BigDecimal price, List<VariantResponse> variants, List<ImageResponse> images,
+        String hangingImageUrl, BigDecimal hangingHookPercent
     ) {}
 
     // No price here -- every variant of a product shares the one price set on the product itself.
@@ -43,7 +46,11 @@ public class ProductDtos {
         Integer weightGrams,
         @NotNull @Positive BigDecimal price,
         List<VariantRequest> variants,
-        List<ImageRequest> images
+        List<ImageRequest> images,
+        String hangingImageUrl,
+        @DecimalMin("0") @DecimalMax("100") BigDecimal hangingHookPercent,
+        /** Null defaults to DRAFT -- see ProductService.create. */
+        ProductStatus status
     ) {}
 
     public record UpdateProductRequest(
@@ -53,6 +60,8 @@ public class ProductDtos {
         ProductStatus status,
         String taxCode,
         Integer weightGrams,
-        @NotNull @Positive BigDecimal price
+        @NotNull @Positive BigDecimal price,
+        String hangingImageUrl,
+        @DecimalMin("0") @DecimalMax("100") BigDecimal hangingHookPercent
     ) {}
 }

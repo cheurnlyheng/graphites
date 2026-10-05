@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
-import { getCartToken, setCartToken } from '@/lib/cart';
-import type { CartResponse } from '@/lib/types';
+import Image from 'next/image';
+import { apiFetch, mediaUrl } from '@/lib/api';
+import { getCartToken, setCartToken, getStoredVariantImage } from '@/lib/cart';
+import type { CartResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
 
 export default function CartPage() {
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [productThumbnails, setProductThumbnails] = useState<Record<string, string>>({});
 
   async function load() {
     setLoading(true);
@@ -25,6 +27,25 @@ export default function CartPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (cart?.items && cart.items.length > 0 && Object.keys(productThumbnails).length === 0) {
+      apiFetch<PageResponse<ProductSummaryResponse>>('/api/products?size=50')
+        .then((page) => {
+          if (page?.content) {
+            const map: Record<string, string> = {};
+            page.content.forEach((p) => {
+              if (p.thumbnailUrl) {
+                map[p.name.toLowerCase()] = p.thumbnailUrl;
+                map[p.id] = p.thumbnailUrl;
+              }
+            });
+            setProductThumbnails(map);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [cart, productThumbnails]);
 
   async function updateQty(itemId: string, quantity: number) {
     if (quantity <= 0) {
@@ -58,28 +79,55 @@ export default function CartPage() {
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-line p-10 text-center">
-        <p className="text-ink/60">Your cart is empty.</p>
-        <Link href="/products" className="btn-primary mt-4 inline-flex">
-          Continue shopping
-        </Link>
+      <div className="mx-auto max-w-4xl px-4 pt-28 pb-20 text-center">
+        <div className="border border-line bg-paper-pure p-12 text-center">
+          <p className="text-xs uppercase tracking-widest font-bold text-ink mb-2">Your cart is empty</p>
+          <p className="text-xs text-ink/50 max-w-sm mx-auto">Discover our Scandinavian rainwear silhouettes and weatherproof carry.</p>
+          <Link href="/products" className="btn-primary mt-6 inline-flex text-xs">
+            Continue shopping
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-10 lg:grid-cols-3">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-24 pb-20 grid gap-10 lg:grid-cols-3">
       <div className="lg:col-span-2">
         <h1 className="page-heading mb-6">Your cart</h1>
         <div className="card divide-y divide-line">
-          {cart.items.map((item) => (
-            <div key={item.cartItemId} className="flex items-center justify-between gap-4 p-4">
-              <div>
-                <p className="font-medium text-ink">{item.productName}</p>
-                {item.variantAttributes && <p className="text-sm text-ink/50">{item.variantAttributes}</p>}
-                <p className="mt-1 text-sm text-ink/50">${item.unitPrice.toFixed(2)} each</p>
-                {!item.inStock && <p className="mt-1 text-xs font-medium text-red-600">Not enough stock available</p>}
-              </div>
+          {cart.items.map((item) => {
+            const itemImg =
+              item.imageUrl ||
+              getStoredVariantImage(item.productVariantId) ||
+              productThumbnails[item.productName.toLowerCase()];
+
+            return (
+              <div key={item.cartItemId} className="flex items-center justify-between gap-4 p-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="relative h-20 w-16 shrink-0 overflow-hidden bg-[#f4f4f2] border border-black/5">
+                    {itemImg ? (
+                      <Image
+                        src={mediaUrl(itemImg)}
+                        alt={item.productName}
+                        fill
+                        sizes="64px"
+                        unoptimized
+                        className="object-cover object-center"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-[10px] text-black/30 font-mono">
+                        GRAPHITES
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-ink truncate">{item.productName}</p>
+                    {item.variantAttributes && <p className="text-sm text-ink/50">{item.variantAttributes}</p>}
+                    <p className="mt-1 text-sm text-ink/50">${item.unitPrice.toFixed(2)} each</p>
+                    {!item.inStock && <p className="mt-1 text-xs font-medium text-red-600">Not enough stock available</p>}
+                  </div>
+                </div>
               <div className="flex items-center gap-4">
                 <input
                   type="number"
@@ -104,7 +152,8 @@ export default function CartPage() {
                 </button>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
 

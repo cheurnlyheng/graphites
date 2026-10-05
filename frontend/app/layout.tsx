@@ -1,22 +1,23 @@
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
-const heading = Fraunces({ subsets: ['latin'], weight: ['500', '600'], variable: '--font-heading' });
-const body = Inter({ subsets: ['latin'], variable: '--font-body' });
+const sans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans',
+  display: 'swap'
+});
 
 export const metadata: Metadata = {
-  title: "Jess's Shop",
-  description: 'Clothing, shipped from our own warehouse to you.'
+  title: 'GRAPHITES',
+  description: 'A small boutique of vintage-inspired tees, hoodies, and pants.'
 };
 
-// Deliberately has no <Header>/<Footer> here -- the storefront route group
-// ((storefront)/layout.tsx) and the admin panel (admin/layout.tsx) each supply
-// their own chrome, so the admin panel never shows the customer-facing nav.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${heading.variable} ${body.variable}`}>
-      <body className="font-sans">{children}</body>
+    <html lang="en" className={sans.variable}>
+      <body className="font-sans antialiased text-[#10100f] bg-[#fbfbfb]">{children}</body>
     </html>
   );
 }

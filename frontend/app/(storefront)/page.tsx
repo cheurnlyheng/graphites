@@ -1,39 +1,70 @@
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
-import { ProductCard } from '@/components/ProductCard';
-import type { PageResponse, ProductSummaryResponse } from '@/lib/types';
+import { HangingRailSection } from '@/components/HangingRailSection';
+import { HeroBanner } from '@/components/HeroBanner';
+import { HomeSectionRow } from '@/components/HomeSectionRow';
+import { SplitBanner } from '@/components/SplitBanner';
+import { productRowAnchors } from '@/lib/home-anchors';
+import type { HomeSectionResponse } from '@/lib/types';
 
+/** The homepage is an ordered list of blocks the admin builds (Admin > Homepage): hero banners, split
+ * banners and rows of hand-picked products, in whatever order they choose. */
 export default async function HomePage() {
-  let products: ProductSummaryResponse[] = [];
-  try {
-    const page = await apiFetch<PageResponse<ProductSummaryResponse>>('/api/products?size=8');
-    products = page.content;
-  } catch {
-    products = [];
+  const blocks = await apiFetch<HomeSectionResponse[]>('/api/home-sections').catch(() => [] as HomeSectionResponse[]);
+
+  if (blocks.length === 0) {
+    return (
+      <div className="px-4 sm:px-8 lg:px-12 py-40 text-center">
+        <Link
+          href="/products"
+          className="text-xs font-bold uppercase tracking-wider text-[#10100F] hover:opacity-60 transition-opacity"
+        >
+          Browse all products →
+        </Link>
+      </div>
+    );
   }
+
+  // Each product row gets an anchor so the header menu can jump straight to it (New Arrivals -> /#new-arrivals).
+  const anchors = productRowAnchors(blocks);
 
   return (
     <div>
-      <section className="mb-12 border-b border-line pb-10">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-accent">New arrivals</p>
-        <h1 className="page-heading">Fresh off the rack</h1>
-        <p className="mt-3 max-w-md text-ink/60">Shipped from our own warehouse, straight to your door.</p>
-        <Link href="/products" className="btn-primary mt-6 inline-flex">
-          Browse all products
-        </Link>
-      </section>
-
-      {products.length > 0 ? (
-        <section className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </section>
-      ) : (
-        <p className="rounded-lg border border-dashed border-line p-8 text-center text-ink/50">
-          No products yet — add some from the admin panel.
-        </p>
-      )}
+      {blocks.map((block, index) => {
+        switch (block.type) {
+          case 'HERO':
+            return (
+              <HeroBanner
+                key={block.id}
+                first={index === 0}
+                imageUrl={block.imageUrl ?? ''}
+                title={block.title ?? ''}
+                description={block.description}
+                buttonText={block.buttonText}
+                buttonLink={block.buttonLink}
+              />
+            );
+          case 'SPLIT_BANNER':
+            return <SplitBanner key={block.id} panels={block.panels} />;
+          case 'PRODUCTS':
+            return (
+              // scroll-mt keeps the row's title clear of the fixed header when jumped to
+              <div key={block.id} id={anchors.get(block.id)} className="py-10 sm:py-14 scroll-mt-16">
+                <HomeSectionRow section={block} />
+              </div>
+            );
+          case 'HANGING_RAIL':
+            return (
+              <HangingRailSection
+                key={block.id}
+                id={anchors.get(block.id)}
+                title={block.title}
+                description={block.description}
+                products={block.products}
+              />
+            );
+        }
+      })}
     </div>
   );
 }

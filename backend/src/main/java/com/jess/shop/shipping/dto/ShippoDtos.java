@@ -57,4 +57,18 @@ public class ShippoDtos {
         @JsonIgnoreProperties(ignoreUnknown = true)
         public record ValidationMessage(String text) {}
     }
+
+    /** Body of a Shippo tracking webhook (registered for the track_updated event). Only the fields this
+     * shop actually reads are modeled -- see docs.goshippo.com/tracking/webhooks for the full shape. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TrackingWebhookPayload(String event, TrackingData data) {
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record TrackingData(@JsonProperty("tracking_number") String trackingNumber,
+                                    @JsonProperty("tracking_status") TrackingStatus trackingStatus) {}
+
+        /** status is one of Shippo's fixed values: UNKNOWN, PRE_TRANSIT, TRANSIT, DELIVERED, RETURNED, FAILURE. */
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record TrackingStatus(String status, @JsonProperty("status_date") String statusDate) {}
+    }
 }

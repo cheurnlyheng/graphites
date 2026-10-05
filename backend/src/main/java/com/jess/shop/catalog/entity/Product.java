@@ -69,6 +69,17 @@ public class Product {
     @Column(name = "tax_code", length = 30)
     private String taxCode;
 
+    /** A transparent-background cutout of the garment on a hanger, used both by the HANGING_RAIL homepage
+     * block and as the product detail page's cover image. Optional -- without it, both places fall back to
+     * the product's normal thumbnail. */
+    @Column(name = "hanging_image_url", length = 500)
+    private String hangingImageUrl;
+
+    /** How far down hangingImageUrl (as a % of its height) the hanger's hook sits, so the rail can pivot every
+     * garment at the same point regardless of photo height. Null falls back to a reasonable default in code. */
+    @Column(name = "hanging_hook_percent", precision = 5, scale = 2)
+    private BigDecimal hangingHookPercent;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

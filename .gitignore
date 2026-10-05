@@ -9,6 +9,10 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.env*.local
+frontend/tsconfig.tsbuildinfo
+
+# Images uploaded through the admin (hero banner etc.)
+backend/uploads/
 
 # Env files (never commit real secrets)
 .env

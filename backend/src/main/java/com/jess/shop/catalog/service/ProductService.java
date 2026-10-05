@@ -71,10 +71,12 @@ public class ProductService {
             .name(request.name())
             .slug(request.slug())
             .description(request.description())
-            .status(ProductStatus.DRAFT)
+            .status(request.status() != null ? request.status() : ProductStatus.DRAFT)
             .weightGrams(request.weightGrams())
             .taxCode(request.taxCode())
             .price(request.price())
+            .hangingImageUrl(blankToNull(request.hangingImageUrl()))
+            .hangingHookPercent(request.hangingHookPercent())
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
@@ -110,6 +112,8 @@ public class ProductService {
         product.setTaxCode(request.taxCode());
         product.setWeightGrams(request.weightGrams());
         product.setPrice(request.price());
+        product.setHangingImageUrl(blankToNull(request.hangingImageUrl()));
+        product.setHangingHookPercent(request.hangingHookPercent());
         product.setUpdatedAt(Instant.now());
         return toDetail(productRepository.save(product));
     }
@@ -159,6 +163,10 @@ public class ProductService {
 
     // ---- helpers ----
 
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
     private Product getOrThrow(UUID id) {
         return productRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
@@ -205,7 +213,7 @@ public class ProductService {
         boolean inStock = variants.stream().anyMatch(v -> v.getStockQty() > 0);
         String thumbnail = imageRepository.findByProductIdOrderBySortOrderAsc(product.getId())
             .stream().findFirst().map(ProductImage::getUrl).orElse(null);
-        return new ProductSummaryResponse(product.getId(), product.getName(), product.getSlug(), product.getPrice(), thumbnail, inStock);
+        return new ProductSummaryResponse(product.getId(), product.getName(), product.getSlug(), product.getPrice(), thumbnail, inStock, product.getStatus());
     }
 
     private ProductDetailResponse toDetail(Product product) {
@@ -215,7 +223,8 @@ public class ProductService {
             .stream().map(this::toImageResponse).toList();
         return new ProductDetailResponse(
             product.getId(), product.getName(), product.getSlug(), product.getDescription(),
-            product.getCategoryId(), product.getStatus(), product.getTaxCode(), product.getPrice(), variants, images
+            product.getCategoryId(), product.getStatus(), product.getTaxCode(), product.getPrice(), variants, images,
+            product.getHangingImageUrl(), product.getHangingHookPercent()
         );
     }
 

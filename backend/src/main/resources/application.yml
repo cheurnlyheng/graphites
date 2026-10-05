@@ -15,17 +15,24 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 10MB     # hero banners are big photos; Spring's default of 1MB would reject them
+      max-request-size: 10MB
 
 server:
   port: 8080
 
 app:
   jwt:
-    secret: ${JWT_SECRET:dev-only-placeholder-change-me}
+    # No fallback on purpose: a guessable default here would quietly sign real admin tokens with a
+    # publicly-known key if JWT_SECRET is ever left unset in a real deployment. Fail loud instead.
+    secret: ${JWT_SECRET}
     expiration-minutes: 60
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+  upload-dir: ${UPLOAD_DIR:uploads}   # admin-uploaded images; relative to where the backend is started
   warehouse:
-    name: ${WAREHOUSE_NAME:Jess's Shop}
+    name: ${WAREHOUSE_NAME:GRAPHITES}
     street1: ${WAREHOUSE_STREET1:}
     city: ${WAREHOUSE_CITY:}
     state: ${WAREHOUSE_STATE:}
@@ -41,6 +48,11 @@ stripe:
 shippo:
   api-token: ${SHIPPO_API_TOKEN:}
   base-url: https://api.goshippo.com
+  # Shippo's tracking webhook has no built-in signature scheme on a standard account, so this shared
+  # secret is appended as a query param on the webhook URL registered in the Shippo dashboard
+  # (.../api/webhooks/shippo?token=...) and checked on the way in. Left blank, the endpoint accepts
+  # any request -- fine for local testing, not for a real deployment.
+  webhook-token: ${SHIPPO_WEBHOOK_TOKEN:}
 
 resend:
   api-key: ${RESEND_API_KEY:}
@@ -48,3 +60,11 @@ resend:
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+sentry:
+  # Blank dsn makes the Sentry SDK a no-op (confirmed by its own auto-configuration) -- safe to leave
+  # unset locally; only reports errors once a real Sentry project's DSN is set in production.
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  # Every unhandled exception is already rare and worth seeing in full; no need to sample them down.
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.0}

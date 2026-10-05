@@ -2,55 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'EuropaGroNr2SH';
+  src: local('EuropaGroNr2SH'), local('Europa Grotesk Nr 2 SH'), local('EuropaGroNr2');
+  font-display: swap;
+}
+
 @layer base {
+  * {
+    border-color: theme('colors.line.DEFAULT');
+  }
   body {
-    @apply bg-paper text-ink antialiased;
+    @apply bg-[#fbfbfb] text-[#10100f] antialiased selection:bg-[#10100f] selection:text-white;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.015em;
   }
   h1,
   h2,
   h3 {
-    @apply font-heading tracking-tight text-ink;
+    @apply tracking-tight text-[#10100f] font-bold;
+    letter-spacing: -0.03em;
   }
 }
 
 @layer components {
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-none px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-ink text-paper hover:bg-accent;
+    @apply btn bg-ink text-paper hover:bg-accent hover:text-white active:scale-[0.99];
   }
   .btn-secondary {
-    @apply btn border border-ink/20 bg-transparent text-ink hover:border-accent hover:text-accent;
+    @apply btn border border-ink/20 bg-transparent text-ink hover:border-ink hover:bg-ink hover:text-paper;
+  }
+  .btn-dark {
+    @apply btn bg-ink-pure text-white hover:bg-neutral-800;
+  }
+  .btn-outline-minimal {
+    @apply inline-flex items-center justify-center gap-2 border border-line bg-paper-pure px-4 py-2 text-xs font-medium uppercase tracking-wider text-ink transition-colors hover:border-ink hover:bg-paper-muted;
   }
   .btn-danger {
     @apply btn border border-red-300 bg-transparent text-red-700 hover:border-red-500 hover:bg-red-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center gap-1 text-sm text-ink/60 underline-offset-4 transition-colors hover:text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-ink/70 transition-colors hover:text-ink hover:underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40;
   }
+
+  /* Form inputs */
   .input {
-    @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-ink/40 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+    @apply w-full rounded-none border border-line bg-paper-pure px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/40 transition-colors focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink;
   }
   .label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink/50;
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-ink/60;
   }
+
+  /* Cards & Containers */
   .card {
-    @apply rounded-lg border border-line bg-white shadow-card;
+    @apply rounded-none border border-line bg-paper-pure shadow-card;
   }
+
+  /* Badges - Rains & Baggu styles */
   .badge {
-    @apply inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center whitespace-nowrap px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest;
   }
+  .badge-dark {
+    @apply badge bg-ink-pure text-paper;
+  }
+  .badge-accent {
+    @apply badge bg-accent text-white;
+  }
+  .badge-subtle {
+    @apply badge border border-line bg-paper-pure text-ink/80;
+  }
+  .badge-weather {
+    @apply badge bg-slate-800 text-slate-100;
+  }
+  .badge-recycled {
+    @apply badge bg-emerald-900 text-emerald-100;
+  }
+
+  /* Headings & Layout */
   .section-heading {
-    @apply font-heading text-2xl font-semibold text-ink;
+    @apply text-xl sm:text-2xl font-semibold tracking-tight text-ink;
   }
   .page-heading {
-    @apply font-heading text-3xl font-semibold text-ink;
+    @apply text-2xl sm:text-4xl font-semibold tracking-tight text-ink;
   }
   .tab-link {
-    @apply border-b-2 border-transparent pb-2 text-sm text-ink/50 transition-colors hover:text-ink;
+    @apply border-b-2 border-transparent pb-2 text-xs font-semibold uppercase tracking-wider text-ink/50 transition-colors hover:text-ink;
   }
   .tab-link-active {
-    @apply border-accent font-medium text-ink;
+    @apply border-ink font-semibold text-ink;
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(33, 31, 27, 0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(33, 31, 27, 0.3);
+}
+
+
+/* Hides the scrollbar on horizontally scrolling rows (still scrolls by swipe, wheel and the arrow buttons). */
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 }

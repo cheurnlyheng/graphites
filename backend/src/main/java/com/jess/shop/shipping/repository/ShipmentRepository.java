@@ -12,4 +12,7 @@ public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
 
     /** The outbound shipment (not a return label) shown to the customer on their order tracking page. */
     Optional<Shipment> findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(UUID orderId);
+
+    /** Looks up the shipment a Shippo tracking webhook is about, by the carrier tracking number. */
+    Optional<Shipment> findByTrackingNumber(String trackingNumber);
 }

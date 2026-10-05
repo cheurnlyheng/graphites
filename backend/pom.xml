@@ -21,6 +21,18 @@
         <java.version>17</java.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>1.21.4</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -95,6 +107,13 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- In-memory per-IP rate limiting for login/checkout/order-lookup; single-instance deployment,
+             so no need for a Redis-backed distributed limiter. -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -103,6 +122,28 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- No-ops entirely if sentry.dsn isn't set (see application.yml), so this is safe to ship even
+             before a Sentry project exists; it just won't report anything until the DSN is configured. -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>7.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -106,16 +106,19 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    /** Called from the Stripe webhook once payment is confirmed. Idempotent: a re-delivered event is a no-op. */
+    /** Called once Stripe says a Checkout Session is paid -- from its webhook, or from the confirmation page's
+     * own check with Stripe (see StripePaymentService), whichever gets there first. Idempotent: the order row is
+     * locked, so if both arrive at once the second waits, sees PAID and does nothing (no double stock decrement,
+     * no second email). */
     @Transactional
     public void markPaid(String stripeSessionId, String paymentIntentId, String customerEmail,
                           Address shippingAddress, Address billingAddress,
                           BigDecimal taxAmount, BigDecimal shippingAmount, BigDecimal total) {
-        Order order = orderRepository.findByStripeCheckoutSessionId(stripeSessionId)
+        Order order = orderRepository.findAndLockByStripeCheckoutSessionId(stripeSessionId)
             .orElseThrow(() -> new ResourceNotFoundException("No order for Stripe session: " + stripeSessionId));
 
         if (order.getStatus() == OrderStatus.PAID) {
-            log.info("Order {} already marked PAID -- ignoring duplicate webhook delivery", order.getId());
+            log.info("Order {} already marked PAID -- ignoring duplicate payment notification", order.getId());
             return;
         }
 
@@ -149,6 +152,10 @@ public class OrderService {
                 // human handles the backorder/refund rather than silently overselling.
                 log.error("OVERSOLD: order {} item {} wanted {} units of variant {} but stock was insufficient",
                     order.getId(), item.getId(), item.getQuantity(), item.getProductVariantId());
+                int available = variantRepository.findById(item.getProductVariantId())
+                    .map(v -> v.getStockQty())
+                    .orElse(0);
+                emailService.sendOversellAlert(order.getId(), item.getProductVariantId(), item.getQuantity(), available);
             }
         }
 
@@ -189,6 +196,13 @@ public class OrderService {
         }
     }
 
+    /** The Stripe Checkout Session this order was created for; null if it never got as far as Stripe. */
+    public String getStripeSessionId(UUID id) {
+        return orderRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id))
+            .getStripeCheckoutSessionId();
+    }
+
     public OrderResponse getById(UUID id) {
         return toResponse(orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id)));
     }
@@ -211,7 +225,7 @@ public class OrderService {
      * use the returns flow instead (ReturnService.markReceivedAndRefund), which is the source of truth
      * for post-shipment refunds. */
     @Transactional
-    public OrderResponse cancel(UUID id) {
+    public OrderResponse cancel(UUID id, String reason) {
         Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
             throw new IllegalStateException("Only a pending or paid (unshipped) order can be cancelled -- this order is " + order.getStatus());
@@ -232,7 +246,9 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        emailService.sendOrderCancellation(saved.getEmail(), saved.getId(), saved.getTotal(), reason);
+        return toResponse(saved);
     }
 
     private OrderResponse toResponse(Order order) {
@@ -253,8 +269,10 @@ public class OrderService {
         String carrier = shipment != null ? shipment.getCarrier() : null;
         String trackingNumber = shipment != null ? shipment.getTrackingNumber() : null;
         String trackingUrl = shipment != null ? shipment.getTrackingUrl() : null;
+        Instant shippedAt = shipment != null ? shipment.getShippedAt() : null;
+        Instant deliveredAt = shipment != null ? shipment.getDeliveredAt() : null;
         return new OrderResponse(order.getId(), order.getEmail(), order.getStatus(), order.getSubtotal(), order.getTaxAmount(),
             order.getShippingAmount(), order.getTotal(), order.getCurrency(), order.getCreatedAt(), order.getPaidAt(), items,
-            addressValid, addressNote, carrier, trackingNumber, trackingUrl);
+            addressValid, addressNote, carrier, trackingNumber, trackingUrl, shippedAt, deliveredAt);
     }
 }

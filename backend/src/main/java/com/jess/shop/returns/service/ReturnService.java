@@ -4,6 +4,7 @@ import com.jess.shop.catalog.repository.ProductVariantRepository;
 import com.jess.shop.common.exception.ResourceNotFoundException;
 import com.jess.shop.order.entity.Order;
 import com.jess.shop.order.entity.OrderItem;
+import com.jess.shop.order.entity.OrderStatus;
 import com.jess.shop.order.repository.OrderItemRepository;
 import com.jess.shop.order.repository.OrderRepository;
 import com.jess.shop.payment.service.StripeRefundService;
@@ -52,6 +53,13 @@ public class ReturnService {
     @Transactional
     public ReturnResponse create(UUID orderId, CreateReturnRequest request) {
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+        // A return means sending back something you've physically received -- before delivery, the
+        // right self-service action is cancelling the order instead (OrderController.cancel, which
+        // only allows PAID/not-yet-shipped). Enforced here too, not just hidden in the storefront UI,
+        // since nothing stops a direct API call from skipping that UI gate.
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Only a delivered order can be returned -- this order is " + order.getStatus());
+        }
 
         ReturnRequest returnRequest = ReturnRequest.builder()
             .orderId(orderId)

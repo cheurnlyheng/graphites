@@ -5,6 +5,8 @@ import com.jess.shop.catalog.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +24,7 @@ public class AdminProductController {
     }
 
     @GetMapping
-    public Page<ProductSummaryResponse> list(Pageable pageable) {
+    public Page<ProductSummaryResponse> list(@PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return productService.adminList(pageable);
     }
 

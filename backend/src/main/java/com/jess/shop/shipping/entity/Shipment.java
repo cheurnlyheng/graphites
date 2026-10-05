@@ -54,6 +54,9 @@ public class Shipment {
     @Column(name = "estimated_delivery")
     private Instant estimatedDelivery;
 
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

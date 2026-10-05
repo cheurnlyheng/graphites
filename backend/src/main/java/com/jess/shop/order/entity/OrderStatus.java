@@ -8,5 +8,8 @@ public enum OrderStatus {
     PENDING,
     PAID,
     SHIPPED,
+    /** Set automatically off Shippo's track_updated webhook once the carrier reports delivery --
+     * see ShippoWebhookService. Never set by hand. */
+    DELIVERED,
     CANCELLED
 }

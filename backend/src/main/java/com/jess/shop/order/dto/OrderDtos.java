@@ -16,7 +16,12 @@ public class OrderDtos {
                                  BigDecimal shippingAmount, BigDecimal total, String currency,
                                  Instant createdAt, Instant paidAt, List<OrderItemResponse> items,
                                  Boolean shippingAddressValid, String shippingAddressValidationNote,
-                                 String carrier, String trackingNumber, String trackingUrl) {}
+                                 String carrier, String trackingNumber, String trackingUrl, Instant shippedAt,
+                                 Instant deliveredAt) {}
 
     public record CheckoutSessionResponse(String checkoutUrl) {}
+
+    /** reason is optional -- an admin cancelling a duplicate/test order may have nothing worth telling the
+     * customer, but when given, it's included in the cancellation email verbatim. */
+    public record CancelOrderRequest(String reason) {}
 }

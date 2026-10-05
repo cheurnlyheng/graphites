@@ -19,6 +19,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     Page<Product> findByStatusAndCategoryId(ProductStatus status, UUID categoryId, Pageable pageable);
 
+    long countByCategoryId(UUID categoryId);
+
     @Query("""
         SELECT p FROM Product p
         WHERE p.status = com.jess.shop.catalog.entity.ProductStatus.ACTIVE
