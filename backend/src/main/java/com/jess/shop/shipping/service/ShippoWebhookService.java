@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 /** Closes the loop that buying a label and marking an order SHIPPED (see ShipmentService) leaves
  * open: nothing else tells this shop when the carrier actually delivered the package. This is that
@@ -53,17 +54,26 @@ public class ShippoWebhookService {
             return;
         }
 
-        Shipment shipment = shipmentRepository.findByTrackingNumber(trackingNumber).orElse(null);
-        if (shipment == null) {
-            log.warn("Shippo reported DELIVERED for a tracking number this shop doesn't recognize: {}", trackingNumber);
+        // A return label's own movement isn't the customer's forward shipment, and a shipment already
+        // marked delivered means this is a duplicate delivery of the same webhook event -- both are
+        // filtered out here rather than only matched against a single row, since real carriers issue
+        // unique tracking numbers but Shippo's own test/sandbox carriers don't (see ShipmentRepository).
+        List<Shipment> candidates = shipmentRepository.findAllByTrackingNumber(trackingNumber).stream()
+            .filter(s -> !s.isReturnLabel() && s.getDeliveredAt() == null)
+            .toList();
+        if (candidates.isEmpty()) {
+            log.warn("Shippo reported DELIVERED for a tracking number this shop doesn't recognize (or it's already resolved): {}", trackingNumber);
             return;
         }
-        // A return label's own movement isn't the customer's forward shipment; and a shipment already
-        // marked delivered means this is a duplicate delivery of the same webhook event.
-        if (shipment.isReturnLabel() || shipment.getDeliveredAt() != null) {
+        if (candidates.size() > 1) {
+            // Can't tell which shipment Shippo actually means -- happens with sandbox tracking numbers
+            // that aren't unique (see ShipmentRepository.findAllByTrackingNumber); never guess with money
+            // and order status on the line, just skip and let an admin sort it out manually if it matters.
+            log.warn("Tracking number {} matches {} shipments -- can't tell which one Shippo means, skipping", trackingNumber, candidates.size());
             return;
         }
 
+        Shipment shipment = candidates.get(0);
         shipment.setDeliveredAt(parseStatusDate(payload.data().trackingStatus().statusDate()));
         shipmentRepository.save(shipment);
 

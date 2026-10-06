@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,11 +55,11 @@ class ShippoWebhookServiceTest {
     @Test
     void acceptsRequestWhenNoTokenIsConfigured() {
         ReflectionTestUtils.setField(service, "webhookToken", "");
-        when(shipmentRepository.findByTrackingNumber("1Z999")).thenReturn(Optional.empty());
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of());
 
         service.handle("anything-or-nothing", payload("DELIVERED", "1Z999"));
 
-        verify(shipmentRepository).findByTrackingNumber("1Z999");
+        verify(shipmentRepository).findAllByTrackingNumber("1Z999");
     }
 
     @Test
@@ -70,7 +71,7 @@ class ShippoWebhookServiceTest {
 
     @Test
     void ignoresUnknownTrackingNumbers() {
-        when(shipmentRepository.findByTrackingNumber("UNKNOWN")).thenReturn(Optional.empty());
+        when(shipmentRepository.findAllByTrackingNumber("UNKNOWN")).thenReturn(List.of());
 
         service.handle("correct-token", payload("DELIVERED", "UNKNOWN"));
 
@@ -81,7 +82,7 @@ class ShippoWebhookServiceTest {
     @Test
     void ignoresReturnLabelShipments() {
         Shipment returnShipment = Shipment.builder().orderId(UUID.randomUUID()).trackingNumber("1Z999").returnLabel(true).build();
-        when(shipmentRepository.findByTrackingNumber("1Z999")).thenReturn(Optional.of(returnShipment));
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(returnShipment));
 
         service.handle("correct-token", payload("DELIVERED", "1Z999"));
 
@@ -93,9 +94,26 @@ class ShippoWebhookServiceTest {
     void ignoresDuplicateDeliveryEventsForAnAlreadyDeliveredShipment() {
         Shipment alreadyDelivered = Shipment.builder().orderId(UUID.randomUUID()).trackingNumber("1Z999")
             .deliveredAt(java.time.Instant.parse("2025-12-31T00:00:00Z")).build();
-        when(shipmentRepository.findByTrackingNumber("1Z999")).thenReturn(Optional.of(alreadyDelivered));
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(alreadyDelivered));
 
         service.handle("correct-token", payload("DELIVERED", "1Z999"));
+
+        verify(shipmentRepository, never()).save(any());
+        verifyNoInteractions(orderRepository);
+    }
+
+    /** Regression test for a real production crash: Shippo's own sandbox/test carriers (e.g. UPS test
+     * labels) hand out the exact same placeholder tracking number for every test label bought, so two
+     * unrelated shipments legitimately share a tracking number once more than one test label exists.
+     * The old Optional-based lookup threw IncorrectResultSizeDataAccessException the moment that
+     * happened; this must degrade to a skipped, logged no-op instead, never a 500. */
+    @Test
+    void doesNotCrashAndSkipsWhenTrackingNumberMatchesMultipleShipments() {
+        Shipment first = Shipment.builder().orderId(UUID.randomUUID()).trackingNumber("1ZXXXXXXXXXXXXXXXX").build();
+        Shipment second = Shipment.builder().orderId(UUID.randomUUID()).trackingNumber("1ZXXXXXXXXXXXXXXXX").build();
+        when(shipmentRepository.findAllByTrackingNumber("1ZXXXXXXXXXXXXXXXX")).thenReturn(List.of(first, second));
+
+        service.handle("correct-token", payload("DELIVERED", "1ZXXXXXXXXXXXXXXXX"));
 
         verify(shipmentRepository, never()).save(any());
         verifyNoInteractions(orderRepository);
@@ -106,7 +124,7 @@ class ShippoWebhookServiceTest {
         UUID orderId = UUID.randomUUID();
         Shipment shipment = Shipment.builder().orderId(orderId).trackingNumber("1Z999").build();
         Order order = Order.builder().id(orderId).status(OrderStatus.SHIPPED).build();
-        when(shipmentRepository.findByTrackingNumber("1Z999")).thenReturn(Optional.of(shipment));
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(shipment));
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         service.handle("correct-token", payload("DELIVERED", "1Z999"));
@@ -122,7 +140,7 @@ class ShippoWebhookServiceTest {
         UUID orderId = UUID.randomUUID();
         Shipment shipment = Shipment.builder().orderId(orderId).trackingNumber("1Z999").build();
         Order cancelledOrder = Order.builder().id(orderId).status(OrderStatus.CANCELLED).build();
-        when(shipmentRepository.findByTrackingNumber("1Z999")).thenReturn(Optional.of(shipment));
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(shipment));
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(cancelledOrder));
 
         service.handle("correct-token", payload("DELIVERED", "1Z999"));

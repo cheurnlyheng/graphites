@@ -16,8 +16,12 @@ public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
     /** The outbound shipment (not a return label) shown to the customer on their order tracking page. */
     Optional<Shipment> findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(UUID orderId);
 
-    /** Looks up the shipment a Shippo tracking webhook is about, by the carrier tracking number. */
-    Optional<Shipment> findByTrackingNumber(String trackingNumber);
+    /** Looks up the shipment(s) a Shippo tracking webhook is about, by the carrier tracking number.
+     * A List, not an Optional -- real carriers issue unique tracking numbers, but Shippo's own
+     * sandbox/test carriers hand out the same fixed placeholder (e.g. "1ZXXXXXXXXXXXXXXXX" for a UPS
+     * test label) for every test label bought, so more than one shipment can share a tracking number
+     * in test mode. See ShippoWebhookService.handle, which has to tolerate that without crashing. */
+    List<Shipment> findAllByTrackingNumber(String trackingNumber);
 
     /** The return label bought for a given return request, if any -- see ReturnService.refund (to
      * deduct its cost for a customer-fault return) and ReturnService.toResponse (to show it to the
