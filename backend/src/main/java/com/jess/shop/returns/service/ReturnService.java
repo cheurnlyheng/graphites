@@ -78,6 +78,30 @@ public class ReturnService {
             throw new IllegalStateException("Only a delivered order can be returned -- this order is " + order.getStatus());
         }
 
+        // Neither check existed before: an orderItemId with no ownership check means a return against
+        // order A could name an order item belonging to order B, and markReceivedAndRefund would happily
+        // refund order A's payment intent using order B's (possibly far higher) item price. And with no
+        // cap on quantity, the same single purchased unit could be claimed back piecemeal across several
+        // return requests until its cumulative refunded quantity far exceeds what was ever bought.
+        for (ReturnItemRequest itemReq : request.items()) {
+            OrderItem orderItem = orderItemRepository.findById(itemReq.orderItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order item not found: " + itemReq.orderItemId()));
+            if (!orderItem.getOrderId().equals(orderId)) {
+                throw new IllegalStateException("Order item " + itemReq.orderItemId() + " does not belong to order " + orderId);
+            }
+            // Excludes rejected prior claims -- otherwise a single admin rejection would permanently
+            // block ever returning that item again, since the rejected quantity would still count
+            // against the cap forever.
+            int alreadyClaimed = returnItemRepository.findByOrderItemId(itemReq.orderItemId()).stream()
+                .filter(ri -> returnRequestRepository.findById(ri.getReturnRequestId())
+                    .map(rr -> rr.getStatus() != ReturnStatus.REJECTED).orElse(false))
+                .mapToInt(ReturnItem::getQuantity).sum();
+            if (alreadyClaimed + itemReq.quantity() > orderItem.getQuantity()) {
+                throw new IllegalStateException("Cannot return " + itemReq.quantity() + " of \"" + orderItem.getProductNameSnapshot()
+                    + "\" -- only " + (orderItem.getQuantity() - alreadyClaimed) + " of " + orderItem.getQuantity() + " purchased remain returnable");
+            }
+        }
+
         ReturnRequest returnRequest = ReturnRequest.builder()
             .orderId(orderId)
             .customerId(order.getCustomerId())
