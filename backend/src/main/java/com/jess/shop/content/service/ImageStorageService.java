@@ -71,7 +71,29 @@ public class ImageStorageService {
     /** Crops the image in place to its opaque bounding box (with a small breathing-room margin) and
      * returns the hook percent for the new, cropped height. Returns null (leaving the file untouched)
      * if the image has no alpha channel, is fully transparent, or is already tightly cropped. */
+    // A PNG's declared dimensions can be enormous while the file on disk is tiny (the pixel grid is
+    // compressed) -- ImageIO.read() allocates and decodes the full pixel grid up front, so a crafted
+    // file can exhaust memory well before the per-pixel loop below ever runs. Checked via the image
+    // reader's header only (no pixel decode yet) before committing to a full read. 8000x8000 is far
+    // beyond any real product photo this admin panel would ever receive.
+    private static final int MAX_DIMENSION = 8000;
+
     private BigDecimal trimTransparentPadding(Path target) throws IOException {
+        try (var in = ImageIO.createImageInputStream(target.toFile())) {
+            var readers = ImageIO.getImageReaders(in);
+            if (readers.hasNext()) {
+                var reader = readers.next();
+                try {
+                    reader.setInput(in);
+                    if (reader.getWidth(0) > MAX_DIMENSION || reader.getHeight(0) > MAX_DIMENSION) {
+                        throw new IllegalArgumentException("Image dimensions are too large (max " + MAX_DIMENSION + "px per side)");
+                    }
+                } finally {
+                    reader.dispose();
+                }
+            }
+        }
+
         BufferedImage img = ImageIO.read(target.toFile());
         if (img == null || !img.getColorModel().hasAlpha()) {
             return null;
