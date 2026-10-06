@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
 import type { FeaturedLink } from '@/lib/home-anchors';
+import type { CategoryResponse } from '@/lib/types';
 
 interface CategoryMegaMenuProps {
   isOpen: boolean;
@@ -28,6 +30,18 @@ function MenuLink({ href, label, onClose, size }: { href: string; label: string;
 }
 
 export function CategoryMegaMenu({ isOpen, onClose, featured = [] }: CategoryMegaMenuProps) {
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+
+  // Fetched once, on open, rather than on mount -- this overlay is created once and toggled via
+  // isOpen for the whole session, so mount-time would only ever catch categories that existed
+  // when the page first loaded, not ones added since.
+  useEffect(() => {
+    if (!isOpen) return;
+    apiFetch<CategoryResponse[]>('/api/categories')
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [isOpen]);
+
   // Close on Escape key and handle scroll lock
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -113,6 +127,15 @@ export function CategoryMegaMenu({ isOpen, onClose, featured = [] }: CategoryMeg
         <div className="max-w-3xl space-y-4 sm:space-y-6">
           <span className={LABEL_CLASS}>Shop</span>
           <MenuLink href="/products" label="Shop all" onClose={onClose} size={featured.length > 0 ? 'small' : 'large'} />
+          {categories.map((c) => (
+            <MenuLink
+              key={c.id}
+              href={`/products?categoryId=${c.id}`}
+              label={c.name}
+              onClose={onClose}
+              size={featured.length > 0 ? 'small' : 'large'}
+            />
+          ))}
         </div>
       </div>
     </div>

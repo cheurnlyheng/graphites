@@ -9,7 +9,7 @@ import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ImageField } from '@/components/admin/ImageField';
 import { useConfirm } from '@/components/admin/ConfirmDialog';
-import type { ProductDetailResponse } from '@/lib/types';
+import type { ProductDetailResponse, CategoryResponse } from '@/lib/types';
 
 interface GridCell {
   variantId: string | null;
@@ -31,6 +31,8 @@ export default function EditProductPage() {
   const [status, setStatus] = useState('DRAFT');
   const [taxCode, setTaxCode] = useState('');
   const [price, setPrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [hangingImageUrl, setHangingImageUrl] = useState('');
   const [hangingHookPercent, setHangingHookPercent] = useState('');
   const [saving, setSaving] = useState(false);
@@ -65,6 +67,7 @@ export default function EditProductPage() {
         setStatus(p.status);
         setTaxCode(p.taxCode || '');
         setPrice(String(p.price));
+        setCategoryId(p.categoryId || '');
         setHangingImageUrl(p.hangingImageUrl || '');
         setHangingHookPercent(p.hangingHookPercent == null ? '' : String(p.hangingHookPercent));
 
@@ -91,6 +94,12 @@ export default function EditProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
+  useEffect(() => {
+    apiFetch<CategoryResponse[]>('/api/categories')
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
   async function save() {
     setSaving(true);
     const auth = getAdminAuth();
@@ -103,7 +112,7 @@ export default function EditProductPage() {
           description,
           status,
           taxCode: taxCode || null,
-          categoryId: product?.categoryId ?? null,
+          categoryId: categoryId || null,
           weightGrams: null,
           price: Number(price),
           hangingImageUrl: hangingImageUrl || null,
@@ -408,7 +417,23 @@ export default function EditProductPage() {
                 />
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5">
+                  Category
+                </label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full rounded-lg border border-[#e5ded2] bg-white px-4 py-2.5 text-sm text-[#10100F] focus:border-[#10100F] focus:outline-none transition-colors font-sans"
+                >
+                  <option value="">Uncategorized</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5">
                   Stripe Tax Code (Optional)
                 </label>

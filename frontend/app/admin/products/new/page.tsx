@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ApiError, apiFetch, mediaUrl, uploadImage } from '@/lib/api';
 import { getAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { ImageField } from '@/components/admin/ImageField';
+import type { CategoryResponse } from '@/lib/types';
 
 interface ImageForm {
   url: string;
@@ -24,6 +25,8 @@ export default function NewProductPage() {
   const [taxCode, setTaxCode] = useState('');
   const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
   const [price, setPrice] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [hangingImageUrl, setHangingImageUrl] = useState('');
   const [hangingHookPercent, setHangingHookPercent] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
@@ -40,6 +43,12 @@ export default function NewProductPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const imageFileInputs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    apiFetch<CategoryResponse[]>('/api/categories')
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   function addColor() {
     const c = colorInput.trim();
@@ -156,6 +165,7 @@ export default function NewProductPage() {
           description,
           status,
           taxCode: taxCode || null,
+          categoryId: categoryId || null,
           price: Number(price),
           variants: variants.map((v) => ({
             sku: null,
@@ -309,16 +319,33 @@ export default function NewProductPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5">
-                    Stripe Tax Code
-                  </label>
-                  <input
-                    placeholder="txcd_99999999 (optional)"
-                    value={taxCode}
-                    onChange={(e) => setTaxCode(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5ded2] bg-white px-4 py-2.5 text-sm text-[#10100F] placeholder:text-[#10100F]/30 focus:border-[#10100F] focus:outline-none focus:ring-1 focus:ring-[#10100F]/20 transition-all font-sans"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5">
+                      Category
+                    </label>
+                    <select
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full rounded-lg border border-[#e5ded2] bg-white px-4 py-2.5 text-sm font-semibold text-[#10100F] focus:border-[#10100F] focus:outline-none focus:ring-1 focus:ring-[#10100F]/20 transition-all font-sans"
+                    >
+                      <option value="">Uncategorized</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5">
+                      Stripe Tax Code
+                    </label>
+                    <input
+                      placeholder="txcd_99999999 (optional)"
+                      value={taxCode}
+                      onChange={(e) => setTaxCode(e.target.value)}
+                      className="w-full rounded-lg border border-[#e5ded2] bg-white px-4 py-2.5 text-sm text-[#10100F] placeholder:text-[#10100F]/30 focus:border-[#10100F] focus:outline-none focus:ring-1 focus:ring-[#10100F]/20 transition-all font-sans"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
