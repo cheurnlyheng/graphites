@@ -316,9 +316,9 @@ public class ReturnService {
 
         returnRequest.setStatus(ReturnStatus.REFUNDED);
         returnRequest.setResolvedAt(Instant.now());
-        returnRequest = returnRequestRepository.save(returnRequest);
+        ReturnRequest saved = returnRequestRepository.save(returnRequest);
         emailService.sendReturnRefunded(order.getEmail(), returnRequestId, finalRefund, labelDeduction);
-        return toResponse(returnRequest);
+        return toResponse(saved);
     }
 
     private ReturnResponse toResponse(ReturnRequest returnRequest) {
