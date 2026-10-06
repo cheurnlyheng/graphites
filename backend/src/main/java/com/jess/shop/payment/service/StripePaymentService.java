@@ -32,12 +32,15 @@ public class StripePaymentService {
         Address shipping = extractAddress(session);
         BigDecimal taxAmount = (session.getTotalDetails() != null && session.getTotalDetails().getAmountTax() != null)
             ? centsToAmount(session.getTotalDetails().getAmountTax()) : BigDecimal.ZERO;
-        BigDecimal shippingAmount = (session.getShippingCost() != null && session.getShippingCost().getAmountSubtotal() != null)
-            ? centsToAmount(session.getShippingCost().getAmountSubtotal()) : BigDecimal.ZERO;
         BigDecimal total = session.getAmountTotal() != null ? centsToAmount(session.getAmountTotal()) : null;
         String email = session.getCustomerDetails() != null ? session.getCustomerDetails().getEmail() : null;
 
-        orderService.markPaid(session.getId(), session.getPaymentIntent(), email, shipping, null, taxAmount, shippingAmount, total);
+        // Shipping is added to the session as a plain line item (see StripeCheckoutService), not
+        // Stripe's own shipping_options/ShippingOption feature, so session.getShippingCost() is always
+        // null here -- there's nothing real to read off Stripe for it. Passing null (not a computed
+        // zero) is what tells markPaid to leave the real amount it already set at checkout time alone;
+        // passing a zero here was silently overwriting every order's correct shipping charge with $0.
+        orderService.markPaid(session.getId(), session.getPaymentIntent(), email, shipping, null, taxAmount, null, total);
     }
 
     /** Called when the customer lands on the confirmation page: if the order is still PENDING, ask Stripe whether
