@@ -24,7 +24,9 @@ public class OrderDtos {
                                  String carrier, String trackingNumber, String trackingUrl, Instant shippedAt,
                                  Instant deliveredAt) {}
 
-    public record CheckoutSessionResponse(String checkoutUrl) {}
+    /** clientSecret mounts Stripe's EmbeddedCheckout component inline on our own /checkout page --
+     * see StripeCheckoutService's embedded ui_mode. */
+    public record CheckoutSessionResponse(String clientSecret) {}
 
     /** The delivery method is a real Shippo rate the customer already picked on the frontend's
      * checkout page (see ShipmentService.getRatesForAddress) -- carrier/serviceLevel/shippingAmount

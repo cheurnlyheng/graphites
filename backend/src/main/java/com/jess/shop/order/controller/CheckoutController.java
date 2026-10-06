@@ -73,7 +73,7 @@ public class CheckoutController {
             Session session = stripeCheckoutService.createSession(order, cart.items(), request.shippingAddress().email(),
                 shippingLabel, request.shippingAmount());
             orderService.attachStripeSession(order.getId(), session.getId());
-            return new CheckoutSessionResponse(session.getUrl());
+            return new CheckoutSessionResponse(session.getClientSecret());
         } catch (StripeException e) {
             throw new RuntimeException("Failed to create Stripe Checkout session", e);
         }

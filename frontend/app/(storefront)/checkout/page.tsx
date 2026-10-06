@@ -1,20 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { loadStripe } from '@stripe/stripe-js';
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getCartToken, setCartToken } from '@/lib/cart';
 import type { CartResponse, ShippingRateOption, ShippingAddressRequest, CheckoutSessionRequest } from '@/lib/types';
 
 const REQUIRED_FIELDS: (keyof ShippingAddressRequest)[] = ['fullName', 'email', 'line1', 'city', 'state', 'postalCode'];
 
-// Scoped to this page only -- Stripe's own hosted checkout (the next step after this one) uses
-// rounded corners, light neutral borders, and a soft focus ring, which reads as more trustworthy
-// for a page asking someone to type in their address than the sharp-cornered boxes used sitewide.
+// Scoped to this page only -- Stripe's own embedded payment form (step 3 below) uses rounded
+// corners, light neutral borders, and a soft focus ring, which reads as more trustworthy for a
+// page asking someone to type in their address than the sharp-cornered boxes used sitewide.
 const FIELD = 'w-full rounded-lg border border-[#e3e3e3] bg-white px-3.5 py-3 text-[15px] text-ink placeholder:text-ink/35 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow focus:border-ink focus:outline-none focus:ring-[3px] focus:ring-ink/15';
 const FIELD_LABEL = 'mb-1.5 block text-[13px] font-medium text-ink/55';
 const PANEL = 'rounded-xl border border-[#e8e8e8] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)]';
 const PRIMARY_BUTTON = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-5 py-3.5 text-sm font-semibold text-paper shadow-sm transition-all hover:bg-ink/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40';
+
+// Loaded once per page load, not per render -- loadStripe caches internally but there's no reason
+// to even call it more than once.
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 function StepNumber({ n, done }: { n: number; done?: boolean }) {
   return (
@@ -56,6 +62,7 @@ export default function CheckoutPage() {
   const [ratesError, setRatesError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<CartResponse>('/api/cart', { cartToken: getCartToken() })
@@ -70,10 +77,12 @@ export default function CheckoutPage() {
     setAddress((prev) => ({ ...prev, [field]: value }));
     setRates(null);
     setSelectedRate(null);
+    setClientSecret(null);
   }
 
   const addressComplete = REQUIRED_FIELDS.every((field) => address[field] && String(address[field]).trim() !== '');
   const addressConfirmed = rates !== null;
+  const paymentStarted = clientSecret !== null;
 
   async function fetchRates() {
     setFetchingRates(true);
@@ -96,6 +105,11 @@ export default function CheckoutPage() {
     }
   }
 
+  function changeDelivery() {
+    setClientSecret(null);
+    setSelectedRate(null);
+  }
+
   async function continueToPayment() {
     if (!selectedRate) return;
     setSubmitting(true);
@@ -107,17 +121,20 @@ export default function CheckoutPage() {
         serviceLevel: selectedRate.serviceLevel,
         shippingAmount: Number(selectedRate.amount)
       };
-      const res = await apiFetch<{ checkoutUrl: string }>('/api/checkout/session', {
+      const res = await apiFetch<{ clientSecret: string }>('/api/checkout/session', {
         method: 'POST',
         cartToken: getCartToken(),
         body: request
       });
-      window.location.href = res.checkoutUrl;
+      setClientSecret(res.clientSecret);
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : 'Could not start payment. Please try again.');
+    } finally {
       setSubmitting(false);
     }
   }
+
+  const checkoutOptions = useMemo(() => (clientSecret ? { clientSecret } : null), [clientSecret]);
 
   if (loading) return <p className="mx-auto max-w-6xl px-4 pt-28 text-ink/50">Loading…</p>;
 
@@ -166,7 +183,7 @@ export default function CheckoutPage() {
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ink">Contact &amp; shipping address</h2>
                 <p className="text-xs text-ink/50">Shipping within the United States only, for now.</p>
               </div>
-              {addressConfirmed && (
+              {addressConfirmed && !paymentStarted && (
                 <button
                   onClick={() => {
                     setRates(null);
@@ -259,10 +276,27 @@ export default function CheckoutPage() {
                 <h2 className="text-sm font-bold uppercase tracking-wide text-ink">Delivery method</h2>
                 <p className="text-xs text-ink/50">Real-time rates from our carrier.</p>
               </div>
+              {paymentStarted && selectedRate && (
+                <button
+                  onClick={changeDelivery}
+                  className="ml-auto text-[11px] font-semibold uppercase tracking-wider text-ink/50 hover:text-ink underline underline-offset-4"
+                >
+                  Edit
+                </button>
+              )}
             </div>
 
             <div className="p-6 sm:p-8">
-              {rates && rates.length > 0 ? (
+              {paymentStarted && selectedRate ? (
+                <div className="flex items-center justify-between text-sm text-ink/70">
+                  <span>
+                    {selectedRate.provider} {selectedRate.serviceLevel}
+                  </span>
+                  <span className="font-mono font-medium text-ink">
+                    {Number(selectedRate.amount) === 0 ? 'Free' : `$${Number(selectedRate.amount).toFixed(2)}`}
+                  </span>
+                </div>
+              ) : rates && rates.length > 0 ? (
                 <div className="space-y-2.5">
                   {[...rates]
                     .sort((a, b) => Number(a.amount) - Number(b.amount))
@@ -304,12 +338,40 @@ export default function CheckoutPage() {
                   <button onClick={fetchRates} disabled={fetchingRates} className="btn-ghost text-[11px] pt-1">
                     {fetchingRates ? 'Refreshing…' : 'Refresh rates'}
                   </button>
+
+                  <button
+                    onClick={continueToPayment}
+                    disabled={!selectedRate || submitting}
+                    className={`${PRIMARY_BUTTON} sm:w-auto mt-2`}
+                  >
+                    {submitting ? 'Loading payment…' : 'Continue to payment'}
+                  </button>
+                  {submitError && <p className="text-xs font-medium text-red-600">{submitError}</p>}
                 </div>
               ) : (
                 <p className="text-xs text-ink/40">Enter your address above to see available delivery methods.</p>
               )}
             </div>
           </div>
+
+          {/* Payment -- Stripe's own embedded form, mounted inline right here once a delivery
+              method is picked, instead of redirecting away to a separate Stripe-hosted page. */}
+          {paymentStarted && checkoutOptions && (
+            <div className={PANEL}>
+              <div className="flex items-center gap-3 border-b border-[#eee] px-6 py-4 sm:px-8">
+                <StepNumber n={3} />
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-ink">Payment</h2>
+                  <p className="text-xs text-ink/50">Processed securely by Stripe.</p>
+                </div>
+              </div>
+              <div className="p-2 sm:p-4">
+                <EmbeddedCheckoutProvider stripe={stripePromise} options={checkoutOptions}>
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Order summary */}
@@ -326,27 +388,32 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-[#eee] pt-4 space-y-2">
-              <div className="flex justify-between text-sm text-ink/70">
-                <span>Subtotal</span>
-                <span className="font-mono">${cart.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-ink/70">
-                <span>Shipping</span>
-                <span className="font-mono">
-                  {selectedRate ? (shippingAmount === 0 ? 'Free' : `$${shippingAmount.toFixed(2)}`) : '—'}
-                </span>
-              </div>
-            </div>
-            <div className="border-t border-[#eee] pt-4 flex items-baseline justify-between">
-              <span className="text-sm font-bold uppercase tracking-wide text-ink">Estimated total</span>
-              <span className="text-xl font-bold text-ink font-mono">${estimatedTotal.toFixed(2)}</span>
-            </div>
-            <p className="text-[11px] text-ink/40">Tax is calculated on the next step.</p>
-            <button onClick={continueToPayment} disabled={!selectedRate || submitting} className={PRIMARY_BUTTON}>
-              {submitting ? 'Redirecting to Stripe…' : 'Continue to payment'}
-            </button>
-            {submitError && <p className="text-xs font-medium text-red-600">{submitError}</p>}
+
+            {paymentStarted ? (
+              <p className="text-[11px] text-ink/40 border-t border-[#eee] pt-4">
+                Final total, including tax, is shown in the payment form.
+              </p>
+            ) : (
+              <>
+                <div className="border-t border-[#eee] pt-4 space-y-2">
+                  <div className="flex justify-between text-sm text-ink/70">
+                    <span>Subtotal</span>
+                    <span className="font-mono">${cart.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-ink/70">
+                    <span>Shipping</span>
+                    <span className="font-mono">
+                      {selectedRate ? (shippingAmount === 0 ? 'Free' : `$${shippingAmount.toFixed(2)}`) : '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-[#eee] pt-4 flex items-baseline justify-between">
+                  <span className="text-sm font-bold uppercase tracking-wide text-ink">Estimated total</span>
+                  <span className="text-xl font-bold text-ink font-mono">${estimatedTotal.toFixed(2)}</span>
+                </div>
+                <p className="text-[11px] text-ink/40">Tax is calculated on the next step.</p>
+              </>
+            )}
 
             <div className="flex items-center justify-center gap-2 border-t border-[#eee] pt-4 text-[11px] text-ink/40">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-3.5 w-3.5">

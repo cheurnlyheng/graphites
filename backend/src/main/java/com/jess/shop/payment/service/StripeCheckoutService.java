@@ -24,14 +24,17 @@ public class StripeCheckoutService {
     /** Builds a Stripe Checkout Session from the order's line items plus one line item for the real
      * Shippo-quoted delivery method the customer already picked on the checkout page (see
      * CheckoutController) -- Stripe no longer collects the address or offers its own shipping tiers,
-     * since both are already known by the time this runs. Stripe's hosted page is left to handle only
-     * payment, automatic tax, and (for guests) confirming the email. */
+     * since both are already known by the time this runs. Embedded ui_mode renders this session's
+     * payment form (card fields, automatic tax, wallets) inline on our own /checkout page via
+     * Stripe.js's EmbeddedCheckout component instead of redirecting to a Stripe-hosted page -- same
+     * Session object and webhook event (checkout.session.completed) either way, just a different
+     * delivery mechanism for the UI. */
     public Session createSession(Order order, List<CartItemResponse> items, String customerEmail,
                                   String shippingLabel, BigDecimal shippingAmount) throws StripeException {
         SessionCreateParams.Builder builder = SessionCreateParams.builder()
+            .setUiMode(SessionCreateParams.UiMode.EMBEDDED_PAGE)
             .setMode(SessionCreateParams.Mode.PAYMENT)
-            .setSuccessUrl(frontendBaseUrl + "/order-confirmation?session_id={CHECKOUT_SESSION_ID}")
-            .setCancelUrl(frontendBaseUrl + "/cart")
+            .setReturnUrl(frontendBaseUrl + "/order-confirmation?session_id={CHECKOUT_SESSION_ID}")
             .setClientReferenceId(order.getId().toString())
             // Card only for now. Left to the account defaults, Stripe also offers Link, Klarna, Affirm,
             // Cash App and Amazon Pay -- Link in particular asks for an email verification code right

@@ -12,10 +12,17 @@ const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:808
 // hydration/dev requirements, not something introduced here.
 const csp = [
   "default-src 'self'",
-  `connect-src 'self' ${apiOrigin}`,
+  // api.stripe.com: Stripe.js's own API calls (tokenizing card details, polling the embedded
+  // checkout session). Without this, those requests are silently blocked by the browser.
+  `connect-src 'self' ${apiOrigin} https://api.stripe.com`,
   "img-src 'self' data: https: http:",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  // js.stripe.com: Stripe.js itself -- blocked by the default self-only policy, which is exactly
+  // why embedded checkout failed to load before this was added.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
+  // The embedded checkout payment form (card fields, 3DS challenges) renders inside a Stripe-hosted
+  // iframe -- with no frame-src set, that falls back to default-src 'self' and gets blocked too.
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "object-src 'none'"
