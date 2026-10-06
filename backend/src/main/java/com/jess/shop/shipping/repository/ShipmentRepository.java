@@ -10,6 +10,9 @@ import java.util.UUID;
 public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
     List<Shipment> findByOrderId(UUID orderId);
 
+    /** Used by reports to total up label spend across a batch of orders in one query. */
+    List<Shipment> findByOrderIdIn(List<UUID> orderIds);
+
     /** The outbound shipment (not a return label) shown to the customer on their order tracking page. */
     Optional<Shipment> findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(UUID orderId);
 

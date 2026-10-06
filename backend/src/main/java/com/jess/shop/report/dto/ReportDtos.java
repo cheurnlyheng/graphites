@@ -7,6 +7,7 @@ import java.util.List;
 public class ReportDtos {
 
     public record ReportSummaryResponse(BigDecimal totalRevenue, long orderCount, BigDecimal averageOrderValue,
+                                         BigDecimal labelCost, BigDecimal estimatedStripeFees, BigDecimal netProfit,
                                          List<DailyRevenue> revenueByDay, List<TopProduct> topProducts) {}
 
     public record DailyRevenue(LocalDate date, BigDecimal revenue, long orderCount) {}

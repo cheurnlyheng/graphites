@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -40,6 +41,10 @@ public class Shipment {
 
     @Column(name = "label_url", length = 500)
     private String labelUrl;
+
+    /** What was paid Shippo for this label -- from the rate the admin picked, since Shippo's
+     * transaction response itself has no cost field. Null for labels bought before this existed. */
+    private BigDecimal cost;
 
     @Column(name = "tracking_url", length = 500)
     private String trackingUrl;

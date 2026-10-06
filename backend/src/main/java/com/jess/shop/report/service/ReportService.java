@@ -8,6 +8,8 @@ import com.jess.shop.order.repository.OrderRepository;
 import com.jess.shop.report.dto.ReportDtos.DailyRevenue;
 import com.jess.shop.report.dto.ReportDtos.ReportSummaryResponse;
 import com.jess.shop.report.dto.ReportDtos.TopProduct;
+import com.jess.shop.shipping.entity.Shipment;
+import com.jess.shop.shipping.repository.ShipmentRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,12 +31,22 @@ public class ReportService {
         List.of(OrderStatus.PAID, OrderStatus.LABEL_PURCHASED, OrderStatus.SHIPPED, OrderStatus.DELIVERED);
     private static final int TOP_PRODUCTS_LIMIT = 10;
 
+    // Stripe's standard published US online rate (2.9% + $0.30 per successful charge). This project
+    // never captures the real per-charge fee from Stripe's balance transaction (that needs an extra
+    // API call per charge, or capturing it off the webhook at payment time), so this is a clearly-
+    // labeled estimate rather than the real number -- close enough to budget against, not exact.
+    private static final BigDecimal STRIPE_PERCENT_FEE = new BigDecimal("0.029");
+    private static final BigDecimal STRIPE_FIXED_FEE = new BigDecimal("0.30");
+
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ShipmentRepository shipmentRepository;
 
-    public ReportService(OrderRepository orderRepository, OrderItemRepository orderItemRepository) {
+    public ReportService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
+                          ShipmentRepository shipmentRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.shipmentRepository = shipmentRepository;
     }
 
     public ReportSummaryResponse summary(Instant from, Instant to) {
@@ -46,6 +58,22 @@ public class ReportService {
             ? BigDecimal.ZERO
             : totalRevenue.divide(BigDecimal.valueOf(orderCount), 2, RoundingMode.HALF_UP);
 
+        List<UUID> orderIds = orders.stream().map(Order::getId).toList();
+
+        // Return labels are a cost of doing returns, not of making the sale -- excluded here so this
+        // stays "what did it cost to ship what we sold", matching how totalRevenue is scoped above.
+        BigDecimal labelCost = orderIds.isEmpty() ? BigDecimal.ZERO : shipmentRepository.findByOrderIdIn(orderIds).stream()
+            .filter(s -> !s.isReturnLabel() && s.getCost() != null)
+            .map(Shipment::getCost)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal estimatedStripeFees = orders.stream()
+            .map(o -> o.getTotal().multiply(STRIPE_PERCENT_FEE).add(STRIPE_FIXED_FEE))
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+            .setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal netProfit = totalRevenue.subtract(labelCost).subtract(estimatedStripeFees);
+
         List<DailyRevenue> revenueByDay = orders.stream()
             .collect(Collectors.groupingBy(o -> LocalDate.ofInstant(o.getPaidAt(), ZoneOffset.UTC)))
             .entrySet().stream()
@@ -55,7 +83,6 @@ public class ReportService {
             .sorted(Comparator.comparing(DailyRevenue::date))
             .toList();
 
-        List<UUID> orderIds = orders.stream().map(Order::getId).toList();
         List<OrderItem> items = orderIds.isEmpty() ? List.of() : orderItemRepository.findByOrderIdIn(orderIds);
         List<TopProduct> topProducts = items.stream()
             .collect(Collectors.groupingBy(OrderItem::getProductNameSnapshot))
@@ -67,6 +94,7 @@ public class ReportService {
             .limit(TOP_PRODUCTS_LIMIT)
             .toList();
 
-        return new ReportSummaryResponse(totalRevenue, orderCount, averageOrderValue, revenueByDay, topProducts);
+        return new ReportSummaryResponse(totalRevenue, orderCount, averageOrderValue, labelCost,
+            estimatedStripeFees, netProfit, revenueByDay, topProducts);
     }
 }

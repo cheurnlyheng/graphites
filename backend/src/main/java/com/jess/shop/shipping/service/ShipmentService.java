@@ -69,7 +69,7 @@ public class ShipmentService {
     public List<ShipmentDto> getShipmentsForOrder(UUID orderId) {
         return shipmentRepository.findByOrderId(orderId).stream()
             .map(s -> new ShipmentDto(s.getId(), s.getOrderId(), s.getCarrier(), s.getTrackingNumber(),
-                s.getLabelUrl(), s.getTrackingUrl(), s.isReturnLabel(), s.getShippedAt()))
+                s.getLabelUrl(), s.getTrackingUrl(), s.isReturnLabel(), s.getShippedAt(), s.getCost()))
             .toList();
     }
 
@@ -145,6 +145,7 @@ public class ShipmentService {
             throw new IllegalStateException("Shippo could not create the label: " + reason);
         }
 
+        BigDecimal cost = parseAmount(request.amount());
         Shipment shipment = Shipment.builder()
             .orderId(orderId)
             .carrier(request.carrier())
@@ -153,6 +154,7 @@ public class ShipmentService {
             .labelUrl(transaction.labelUrl())
             .trackingUrl(transaction.trackingUrlProvider())
             .returnLabel(request.returnLabel())
+            .cost(cost)
             .build();
         shipment = shipmentRepository.save(shipment);
 
@@ -162,7 +164,19 @@ public class ShipmentService {
         }
 
         return new ShipmentDto(shipment.getId(), orderId, shipment.getCarrier(), shipment.getTrackingNumber(),
-            shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt());
+            shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt(), shipment.getCost());
+    }
+
+    // The admin's own frontend already has the rate's price (it just showed it to them before they clicked
+    // buy), so this just trusts what was echoed back -- same trust level this endpoint already gives `carrier`.
+    // Garbled input becomes "cost unknown" (null) on the report rather than a failed label purchase.
+    private BigDecimal parseAmount(String amount) {
+        if (amount == null || amount.isBlank()) return null;
+        try {
+            return new BigDecimal(amount);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** The actual "handed to the carrier" moment -- separate from buying the label, which just means packing has
@@ -189,7 +203,7 @@ public class ShipmentService {
             shipment.getTrackingNumber(), shipment.getTrackingUrl());
 
         return new ShipmentDto(shipment.getId(), orderId, shipment.getCarrier(), shipment.getTrackingNumber(),
-            shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt());
+            shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt(), shipment.getCost());
     }
 
     private void requireReadyToShip(Order order) {

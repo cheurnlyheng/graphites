@@ -199,6 +199,7 @@ export interface ShipmentResponse {
   trackingUrl: string | null;
   returnLabel: boolean;
   shippedAt: string | null;
+  cost: number | null;
 }
 
 export interface AuthResponse {
@@ -301,6 +302,9 @@ export interface ReportSummaryResponse {
   totalRevenue: number;
   orderCount: number;
   averageOrderValue: number;
+  labelCost: number;
+  estimatedStripeFees: number;
+  netProfit: number;
   revenueByDay: DailyRevenue[];
   topProducts: TopProduct[];
 }

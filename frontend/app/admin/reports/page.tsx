@@ -116,11 +116,11 @@ export default function AdminReportsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="rounded-xl border border-[#e5ded2] bg-white p-6 shadow-2xs">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">Total Earnings</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">Gross Earnings</span>
           <p className="mt-3 text-4xl font-extrabold text-[#10100F] tracking-tight">
             {loading ? '—' : `$${(report?.totalRevenue ?? 0).toFixed(2)}`}
           </p>
-          <p className="text-xs text-[#10100F]/55 mt-2">From paid, shipped &amp; delivered orders in range</p>
+          <p className="text-xs text-[#10100F]/55 mt-2">What customers paid, before costs</p>
         </div>
         <div className="rounded-xl border border-[#e5ded2] bg-white p-6 shadow-2xs">
           <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">Orders</span>
@@ -134,7 +134,32 @@ export default function AdminReportsPage() {
           <p className="mt-3 text-4xl font-extrabold text-[#10100F] tracking-tight">
             {loading ? '—' : `$${(report?.averageOrderValue ?? 0).toFixed(2)}`}
           </p>
-          <p className="text-xs text-[#10100F]/55 mt-2">Total earnings ÷ order count</p>
+          <p className="text-xs text-[#10100F]/55 mt-2">Gross earnings ÷ order count</p>
+        </div>
+      </div>
+
+      {/* Costs & net profit */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-6 shadow-2xs">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">Spent on Labels</span>
+          <p className="mt-3 text-4xl font-extrabold text-rose-700 tracking-tight">
+            {loading ? '—' : `-$${(report?.labelCost ?? 0).toFixed(2)}`}
+          </p>
+          <p className="text-xs text-[#10100F]/55 mt-2">Shippo label purchases in range</p>
+        </div>
+        <div className="rounded-xl border border-[#e5ded2] bg-white p-6 shadow-2xs">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">Est. Stripe Fees</span>
+          <p className="mt-3 text-4xl font-extrabold text-rose-700 tracking-tight">
+            {loading ? '—' : `-$${(report?.estimatedStripeFees ?? 0).toFixed(2)}`}
+          </p>
+          <p className="text-xs text-[#10100F]/55 mt-2">Estimated at 2.9% + $0.30/order -- not the exact Stripe number</p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-2xs">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Net Profit</span>
+          <p className="mt-3 text-4xl font-extrabold text-emerald-900 tracking-tight">
+            {loading ? '—' : `$${(report?.netProfit ?? 0).toFixed(2)}`}
+          </p>
+          <p className="text-xs text-emerald-800/70 mt-2">Gross earnings minus labels &amp; est. Stripe fees</p>
         </div>
       </div>
 

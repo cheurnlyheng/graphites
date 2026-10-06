@@ -67,7 +67,7 @@ export default function AdminOrderDetailPage() {
     }
   }
 
-  async function buyLabel(rateObjectId: string, provider: string) {
+  async function buyLabel(rateObjectId: string, provider: string, amount: string) {
     if (buyingRef.current) return;
     buyingRef.current = true;
     setBuying(true);
@@ -77,7 +77,7 @@ export default function AdminOrderDetailPage() {
       await apiFetch(`/api/admin/orders/${params.id}/shipping/label`, {
         method: 'POST',
         token: auth?.token,
-        body: { rateObjectId, carrier: provider, returnLabel: false }
+        body: { rateObjectId, carrier: provider, amount, returnLabel: false }
       });
       setRates([]);
       setStatus('Label purchased — pack the order, then mark it shipped once it\'s with the carrier.');
@@ -446,7 +446,7 @@ export default function AdminOrderDetailPage() {
                           </p>
                         </div>
                         <button
-                          onClick={() => buyLabel(r.rateObjectId, r.provider)}
+                          onClick={() => buyLabel(r.rateObjectId, r.provider, r.amount)}
                           disabled={buying}
                           className={`rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all shrink-0 active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed ${
                             isCustomerChoice ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-[#10100F] hover:bg-neutral-800 text-white'
