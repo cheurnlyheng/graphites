@@ -2,18 +2,56 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
-import { apiFetch, ApiError } from '@/lib/api';
-import { getCartToken, setCartToken } from '@/lib/cart';
-import type { CartResponse, ShippingRateOption, ShippingAddressRequest, CheckoutSessionRequest } from '@/lib/types';
+import { apiFetch, mediaUrl, ApiError } from '@/lib/api';
+import { getCartToken, setCartToken, getStoredVariantImage } from '@/lib/cart';
+import type {
+  CartResponse,
+  ShippingRateOption,
+  ShippingAddressRequest,
+  CheckoutSessionRequest,
+  PageResponse,
+  ProductSummaryResponse
+} from '@/lib/types';
 
-const REQUIRED_FIELDS: (keyof ShippingAddressRequest)[] = ['fullName', 'email', 'line1', 'city', 'state', 'postalCode'];
+const REQUIRED_FIELDS: (keyof ShippingAddressRequest)[] = ['fullName', 'email', 'phone', 'line1', 'city', 'state', 'postalCode'];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Lenient on formatting (spaces, dashes, parens, a leading +1) but still requires a real 10-digit
+// US number -- Shippo rejects a label purchase outright without one ("address_to.phone should
+// contain a valid phone number"), which is exactly what broke an admin's label purchase once
+// a customer actually placed a real order with a bad phone number.
+const PHONE_RE = /^\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+const ZIP_RE = /^\d{5}(-\d{4})?$/;
+const US_STATES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+  'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA',
+  'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+]);
+
+function validateAddress(address: ShippingAddressRequest): Partial<Record<keyof ShippingAddressRequest, string>> {
+  const errors: Partial<Record<keyof ShippingAddressRequest, string>> = {};
+  if (!address.fullName.trim()) errors.fullName = 'Required';
+  if (!address.email.trim()) errors.email = 'Required';
+  else if (!EMAIL_RE.test(address.email.trim())) errors.email = 'Enter a valid email address';
+  if (!address.phone || !address.phone.trim()) errors.phone = 'Required -- needed to generate your shipping label';
+  else if (!PHONE_RE.test(address.phone.trim())) errors.phone = 'Enter a valid US phone number';
+  if (!address.line1.trim()) errors.line1 = 'Required';
+  if (!address.city.trim()) errors.city = 'Required';
+  if (!address.state.trim()) errors.state = 'Required';
+  else if (!US_STATES.has(address.state.trim().toUpperCase())) errors.state = 'Enter a valid 2-letter state code';
+  if (!address.postalCode.trim()) errors.postalCode = 'Required';
+  else if (!ZIP_RE.test(address.postalCode.trim())) errors.postalCode = 'Enter a valid ZIP code';
+  return errors;
+}
 
 // Scoped to this page only -- Stripe's own embedded payment form (step 3 below) uses rounded
 // corners, light neutral borders, and a soft focus ring, which reads as more trustworthy for a
 // page asking someone to type in their address than the sharp-cornered boxes used sitewide.
 const FIELD = 'w-full rounded-lg border border-[#e3e3e3] bg-white px-3.5 py-3 text-[15px] text-ink placeholder:text-ink/35 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow focus:border-ink focus:outline-none focus:ring-[3px] focus:ring-ink/15';
+const FIELD_ERROR = 'border-red-400 focus:border-red-400 focus:ring-red-400/15';
 const FIELD_LABEL = 'mb-1.5 block text-[13px] font-medium text-ink/55';
 const PANEL = 'rounded-xl border border-[#e8e8e8] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.04)]';
 const PRIMARY_BUTTON = 'inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-5 py-3.5 text-sm font-semibold text-paper shadow-sm transition-all hover:bg-ink/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40';
@@ -40,9 +78,43 @@ function StepNumber({ n, done }: { n: number; done?: boolean }) {
   );
 }
 
+function Field({
+  label,
+  value,
+  onChange,
+  error,
+  type = 'text',
+  placeholder,
+  disabled
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className={FIELD_LABEL}>{label}</label>
+      <input
+        type={type}
+        className={`${FIELD} ${error ? FIELD_ERROR : ''} ${disabled ? 'bg-[#fafafa] text-ink/50' : ''}`}
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error && <p className="mt-1 text-xs font-medium text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [productThumbnails, setProductThumbnails] = useState<Record<string, string>>({});
 
   const [address, setAddress] = useState<ShippingAddressRequest>({
     fullName: '',
@@ -55,6 +127,7 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'US'
   });
+  const [addressErrors, setAddressErrors] = useState<Partial<Record<keyof ShippingAddressRequest, string>>>({});
 
   const [rates, setRates] = useState<ShippingRateOption[] | null>(null);
   const [selectedRate, setSelectedRate] = useState<ShippingRateOption | null>(null);
@@ -73,14 +146,38 @@ export default function CheckoutPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (cart?.items && cart.items.length > 0 && Object.keys(productThumbnails).length === 0) {
+      apiFetch<PageResponse<ProductSummaryResponse>>('/api/products?size=50')
+        .then((page) => {
+          if (page?.content) {
+            const map: Record<string, string> = {};
+            page.content.forEach((p) => {
+              if (p.thumbnailUrl) {
+                map[p.name.toLowerCase()] = p.thumbnailUrl;
+                map[p.id] = p.thumbnailUrl;
+              }
+            });
+            setProductThumbnails(map);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [cart, productThumbnails]);
+
   function updateAddress<K extends keyof ShippingAddressRequest>(field: K, value: ShippingAddressRequest[K]) {
     setAddress((prev) => ({ ...prev, [field]: value }));
     setRates(null);
     setSelectedRate(null);
     setClientSecret(null);
+    setAddressErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
   }
 
-  const addressComplete = REQUIRED_FIELDS.every((field) => address[field] && String(address[field]).trim() !== '');
   const addressConfirmed = rates !== null;
   const paymentStarted = clientSecret !== null;
 
@@ -103,6 +200,13 @@ export default function CheckoutPage() {
     } finally {
       setFetchingRates(false);
     }
+  }
+
+  function handleContinueToDelivery() {
+    const errors = validateAddress(address);
+    setAddressErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    fetchRates();
   }
 
   function changeDelivery() {
@@ -203,64 +307,59 @@ export default function CheckoutPage() {
                   {address.line1}
                   {address.line2 ? `, ${address.line2}` : ''}, {address.city}, {address.state} {address.postalCode}
                 </p>
-                <p>{address.email}</p>
+                <p>
+                  {address.email} · {address.phone}
+                </p>
               </div>
             ) : (
               <div className="p-6 sm:p-8 space-y-5">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className={FIELD_LABEL}>Full name</label>
-                    <input className={FIELD} value={address.fullName} onChange={(e) => updateAddress('fullName', e.target.value)} />
+                    <Field label="Full name" value={address.fullName} onChange={(v) => updateAddress('fullName', v)} error={addressErrors.fullName} />
                   </div>
-                  <div>
-                    <label className={FIELD_LABEL}>Email</label>
-                    <input
-                      type="email"
-                      className={FIELD}
-                      value={address.email}
-                      onChange={(e) => updateAddress('email', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={FIELD_LABEL}>Phone (optional)</label>
-                    <input className={FIELD} value={address.phone ?? ''} onChange={(e) => updateAddress('phone', e.target.value)} />
+                  <Field
+                    label="Email"
+                    type="email"
+                    value={address.email}
+                    onChange={(v) => updateAddress('email', v)}
+                    error={addressErrors.email}
+                  />
+                  <Field
+                    label="Phone"
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    value={address.phone ?? ''}
+                    onChange={(v) => updateAddress('phone', v)}
+                    error={addressErrors.phone}
+                  />
+                  <div className="sm:col-span-2">
+                    <Field label="Street address" value={address.line1} onChange={(v) => updateAddress('line1', v)} error={addressErrors.line1} />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className={FIELD_LABEL}>Street address</label>
-                    <input className={FIELD} value={address.line1} onChange={(e) => updateAddress('line1', e.target.value)} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={FIELD_LABEL}>Apartment, suite, etc. (optional)</label>
-                    <input className={FIELD} value={address.line2 ?? ''} onChange={(e) => updateAddress('line2', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={FIELD_LABEL}>City</label>
-                    <input className={FIELD} value={address.city} onChange={(e) => updateAddress('city', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={FIELD_LABEL}>State</label>
-                    <input
-                      className={FIELD}
-                      placeholder="e.g. CA"
-                      value={address.state}
-                      onChange={(e) => updateAddress('state', e.target.value)}
+                    <Field
+                      label="Apartment, suite, etc. (optional)"
+                      value={address.line2 ?? ''}
+                      onChange={(v) => updateAddress('line2', v)}
                     />
                   </div>
-                  <div>
-                    <label className={FIELD_LABEL}>ZIP code</label>
-                    <input
-                      className={FIELD}
-                      value={address.postalCode}
-                      onChange={(e) => updateAddress('postalCode', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={FIELD_LABEL}>Country</label>
-                    <input className={`${FIELD} bg-[#fafafa] text-ink/50`} value="United States" disabled />
-                  </div>
+                  <Field label="City" value={address.city} onChange={(v) => updateAddress('city', v)} error={addressErrors.city} />
+                  <Field
+                    label="State"
+                    placeholder="e.g. CA"
+                    value={address.state}
+                    onChange={(v) => updateAddress('state', v)}
+                    error={addressErrors.state}
+                  />
+                  <Field
+                    label="ZIP code"
+                    value={address.postalCode}
+                    onChange={(v) => updateAddress('postalCode', v)}
+                    error={addressErrors.postalCode}
+                  />
+                  <Field label="Country" value="United States" onChange={() => {}} disabled />
                 </div>
 
-                <button onClick={fetchRates} disabled={!addressComplete || fetchingRates} className={`${PRIMARY_BUTTON} sm:w-auto`}>
+                <button onClick={handleContinueToDelivery} disabled={fetchingRates} className={`${PRIMARY_BUTTON} sm:w-auto`}>
                   {fetchingRates ? 'Looking up delivery methods…' : 'Continue to delivery'}
                 </button>
                 {ratesError && <p className="text-xs font-medium text-red-600">{ratesError}</p>}
@@ -378,15 +477,33 @@ export default function CheckoutPage() {
         <div>
           <div className={`${PANEL} sticky top-24 p-6 sm:p-7 space-y-5`}>
             <h2 className="text-sm font-bold uppercase tracking-wide text-ink">Order summary</h2>
-            <div className="space-y-2.5 text-sm">
-              {cart.items.map((item) => (
-                <div key={item.cartItemId} className="flex justify-between text-ink/70">
-                  <span className="truncate pr-2">
-                    {item.productName} × {item.quantity}
-                  </span>
-                  <span className="shrink-0 font-mono">${item.lineTotal.toFixed(2)}</span>
-                </div>
-              ))}
+            <div className="space-y-3.5">
+              {cart.items.map((item) => {
+                const itemImg =
+                  item.imageUrl ||
+                  getStoredVariantImage(item.productVariantId) ||
+                  productThumbnails[item.productName.toLowerCase()];
+                return (
+                  <div key={item.cartItemId} className="flex items-center gap-3">
+                    <div className="relative h-14 w-11 shrink-0 overflow-hidden rounded-md bg-[#f4f4f2] border border-black/5">
+                      {itemImg ? (
+                        <Image src={mediaUrl(itemImg)} alt={item.productName} fill sizes="44px" unoptimized className="object-cover object-center" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-[8px] text-black/30 font-mono">
+                          N/A
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-ink/80">
+                        {item.productName} × {item.quantity}
+                      </p>
+                      {item.variantAttributes && <p className="truncate text-xs text-ink/40">{item.variantAttributes}</p>}
+                    </div>
+                    <span className="shrink-0 font-mono text-sm text-ink/70">${item.lineTotal.toFixed(2)}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {paymentStarted ? (
