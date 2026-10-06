@@ -130,11 +130,19 @@ public class ReturnService {
     }
 
     /** Called once the physical item is back with Jess. Restocks the variant (unless it was
-     * damaged/final-sale) and issues a Stripe refund for the returned line item(s). */
+     * damaged/final-sale) and issues a Stripe refund for the returned line item(s). Locked, and
+     * guarded against being re-run on an already-refunded request: a double-clicked button, a retried
+     * request, or two admins acting on the same return would otherwise both restock and both refund --
+     * and unlike a full-order cancellation, Stripe won't reliably reject a second *partial* refund of
+     * the same amount if the original charge still has headroom left, so this one can't just lean on
+     * Stripe's own "can't refund more than the charge" limit to catch a duplicate. */
     @Transactional
     public ReturnResponse markReceivedAndRefund(UUID returnRequestId, ResolveReturnRequest request) {
-        ReturnRequest returnRequest = returnRequestRepository.findById(returnRequestId)
+        ReturnRequest returnRequest = returnRequestRepository.findAndLockById(returnRequestId)
             .orElseThrow(() -> new ResourceNotFoundException("Return request not found: " + returnRequestId));
+        if (returnRequest.getStatus() == ReturnStatus.REFUNDED) {
+            throw new IllegalStateException("This return has already been refunded");
+        }
         Order order = orderRepository.findById(returnRequest.getOrderId())
             .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + returnRequest.getOrderId()));
 

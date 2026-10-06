@@ -252,9 +252,15 @@ public class OrderService {
      * Stripe and puts the stock back. Once an order has shipped, cancellation isn't meaningful anymore;
      * use the returns flow instead (ReturnService.markReceivedAndRefund), which is the source of truth
      * for post-shipment refunds. */
+    // Locked for the same reason ShipmentService.buyLabel locks the order row: without it, two
+    // concurrent cancel requests for the same order (trivial to fire deliberately -- this is a public,
+    // unauthenticated, guest-facing endpoint) both read the status before either commits, both pass the
+    // not-yet-cancelled check, and both increment stock. For a PENDING order that never actually paid --
+    // and so never had its stock decremented in the first place -- that's not a double-refund risk, it's
+    // free, fabricated inventory, repeatable indefinitely with no payment or auth required at all.
     @Transactional
     public OrderResponse cancel(UUID id, String reason) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+        Order order = orderRepository.findAndLockById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
             throw new IllegalStateException("Only a pending or paid (unshipped) order can be cancelled -- this order is " + order.getStatus());
         }
