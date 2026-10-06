@@ -64,18 +64,21 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Railway (and most PaaS hosts) sit behind a reverse proxy, so the "real" client IP arrives via
      * this header rather than as the TCP peer address -- falls back to that for local dev.
      *
-     * Deliberately takes the LAST entry, not the first: a client can freely set its own
-     * X-Forwarded-For on the request it sends, so if a trusted proxy *appends* to that (the
-     * standard behavior, e.g. Cloudflare) rather than replacing it outright, the first entry is
-     * attacker-controlled and the last is the one the trusted proxy itself observed and added.
-     * Only safe because exactly one hop (Railway's edge) is trusted here; if a second trusted
-     * proxy is ever added in front of it, this needs to skip that many entries from the end
-     * instead of always taking the last one. */
+     * Takes the FIRST entry. In general a proxy chain that *appends* to an existing
+     * X-Forwarded-For (rather than replacing it) makes the first entry attacker-controlled --
+     * tried exactly that against production and confirmed Railway's edge does the opposite: it
+     * discards whatever the client sent and sets this header itself, so the first entry is
+     * Railway's own trusted value, not the client's. (Briefly "fixed" this to take the last
+     * entry instead, on the theory that an appending proxy was possible -- verified against
+     * production that Railway actually appends a second, internal, per-request hop after the
+     * real client IP, so the last entry is useless for rate-limiting and that change silently
+     * broke the limiter entirely. Reverted.) If a proxy is ever added in front of Railway (e.g.
+     * Cloudflare), prefer that proxy's own dedicated client-IP header (e.g. CF-Connecting-IP)
+     * over guessing a position in X-Forwarded-For. */
     private static String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            String[] hops = forwarded.split(",");
-            return hops[hops.length - 1].trim();
+            return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
     }
