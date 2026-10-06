@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { apiFetch, mediaUrl } from '@/lib/api';
 import { useCart } from '@/components/cart/CartContext';
 import { StatusBadge } from '@/components/StatusBadge';
+import { downloadReceiptPdf } from '@/lib/receiptPdf';
 import type { OrderResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
 
 const POLL_MS = 2500;
@@ -237,14 +238,14 @@ export function OrderConfirmationClient() {
           </Link>
 
           <button
-            onClick={() => window.print()}
+            onClick={() => downloadReceiptPdf(order)}
             type="button"
             className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-transparent px-4 py-3 text-xs font-semibold uppercase tracking-wider text-[#10100F]/70 hover:text-[#10100F] hover:bg-black/5 transition-all"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24-1.07-.37-2.18-.37-3.329 0-4.418 3.582-8 8-8s8 3.582 8 8c0 1.149-.13 2.259-.37 3.329m-15.26 0A8.003 8.003 0 0012 21a8.003 8.003 0 007.64-5.171m-15.28 0a8.003 8.003 0 010-3.658m15.28 3.658a8.003 8.003 0 000-3.658M9 12h6m-3-3v6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
             </svg>
-            <span>Print Receipt</span>
+            <span>Download Receipt</span>
           </button>
         </div>
       </div>

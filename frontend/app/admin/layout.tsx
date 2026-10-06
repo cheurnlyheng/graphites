@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { clearAdminAuth, getAdminAuth } from '@/lib/auth';
+import { ConfirmProvider } from '@/components/admin/ConfirmDialog';
 
 interface NavItem {
   href: string;
@@ -282,6 +283,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 
   return (
+    <ConfirmProvider>
     <div className="flex h-screen w-screen overflow-hidden bg-[#10100F] text-[#10100F] font-sans antialiased">
       {/* Desktop Sticky Sidebar (Permanent, 100% height, never scrolls with page) */}
       <aside className="hidden md:flex w-64 lg:w-72 h-full shrink-0 flex-col z-30 bg-[#10100F]">
@@ -350,5 +352,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
     </div>
+    </ConfirmProvider>
   );
 }

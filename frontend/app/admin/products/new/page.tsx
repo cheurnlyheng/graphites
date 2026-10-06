@@ -479,7 +479,7 @@ export default function NewProductPage() {
                       {rows.map((s) => (
                         <tr key={s ?? 'default'} className="hover:bg-[#f3f3f1]/40 transition-colors">
                           <td className="py-3 px-4 font-bold text-sm text-[#10100F] bg-[#f3f3f1]/50">
-                            {s ?? 'OS'}
+                            {s ?? 'Standard'}
                           </td>
                           {cols.map((c) => {
                             const key = cellKey(s, c);

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError, apiFetch, mediaUrl } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 import type { AdminHomeSectionResponse, HomeSectionType } from '@/lib/types';
 import { TYPE_LABELS } from './draft';
 
@@ -36,6 +37,7 @@ function blockName(s: AdminHomeSectionResponse): string {
  * stays light even once there are many blocks each carrying a lot of picked-product data. */
 export default function AdminHomepagePage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [sections, setSections] = useState<AdminHomeSectionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [choosingType, setChoosingType] = useState(false);
@@ -73,7 +75,12 @@ export default function AdminHomepagePage() {
   }, []);
 
   async function remove(s: AdminHomeSectionResponse) {
-    if (!window.confirm(`Delete "${blockName(s)}" from the homepage?${s.type === 'PRODUCTS' ? ' The products in it are not deleted.' : ''}`)) return;
+    if (!(await confirm({
+      title: 'Delete homepage block',
+      message: `Delete "${blockName(s)}" from the homepage?${s.type === 'PRODUCTS' ? ' The products in it are not deleted.' : ''}`,
+      confirmLabel: 'Delete',
+      danger: true
+    }))) return;
     const auth = getAdminAuth();
     if (!auth) {
       router.push('/admin/login');

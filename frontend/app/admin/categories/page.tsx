@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError, apiFetch } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 import type { AdminCategoryResponse } from '@/lib/types';
 
 const labelClass = 'block text-xs font-bold uppercase tracking-wider text-[#10100F]/70 mb-1.5 font-sans';
@@ -17,6 +18,7 @@ function slugify(value: string) {
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState<AdminCategoryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export default function AdminCategoriesPage() {
       c.productCount > 0
         ? `\n\n${c.productCount} product${c.productCount === 1 ? '' : 's'} in it will become uncategorized (they are not deleted).`
         : '';
-    if (!window.confirm(`Delete the category "${c.name}"?${detail}`)) return;
+    if (!(await confirm({ title: 'Delete category', message: `Delete the category "${c.name}"?${detail}`, confirmLabel: 'Delete', danger: true }))) return;
     const auth = getAdminAuth();
     if (!auth) {
       router.push('/admin/login');

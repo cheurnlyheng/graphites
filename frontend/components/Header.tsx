@@ -93,7 +93,7 @@ export function Header() {
         </div>
 
         {/* Right: Search & Cart Pills (Rains style) */}
-        <div className="pointer-events-auto flex items-center gap-2">
+        <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
           {/* Search Button Pill */}
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -135,7 +135,7 @@ export function Header() {
                   d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
                 />
               </svg>
-              <span>ORDER</span>
+              <span className="hidden sm:inline">ORDER</span>
             </Link>
           )}
 
@@ -143,7 +143,7 @@ export function Header() {
           <button
             onClick={openCart}
             aria-label={`Cart with ${itemCount} items`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3.5 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
           >
             <svg
               viewBox="0 0 24 24"

@@ -8,6 +8,7 @@ import { ApiError, apiFetch, mediaUrl, uploadImage } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ImageField } from '@/components/admin/ImageField';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 import type { ProductDetailResponse } from '@/lib/types';
 
 interface GridCell {
@@ -22,6 +23,7 @@ function cellKey(size: string | null, color: string | null) {
 export default function EditProductPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const confirm = useConfirm();
   const [product, setProduct] = useState<ProductDetailResponse | null>(null);
 
   const [name, setName] = useState('');
@@ -115,7 +117,7 @@ export default function EditProductPage() {
   }
 
   async function deleteProduct() {
-    if (!confirm('Delete this product permanently?')) return;
+    if (!(await confirm({ title: 'Delete product', message: 'Delete this product permanently?', confirmLabel: 'Delete', danger: true }))) return;
     const auth = getAdminAuth();
     await apiFetch(`/api/admin/products/${params.id}`, { method: 'DELETE', token: auth?.token });
     router.push('/admin/products');
@@ -137,7 +139,7 @@ export default function EditProductPage() {
    * server rather than just hiding it locally. A size/color the admin only just added (never saved) has
    * no variantId anywhere, so the loop below is a no-op and the reload simply won't bring it back. */
   async function removeSize(s: string) {
-    if (!confirm(`Remove size "${s}"? This deletes every existing variant using it.`)) return;
+    if (!(await confirm({ title: 'Remove size', message: `Remove size "${s}"? This deletes every existing variant using it.`, confirmLabel: 'Remove', danger: true }))) return;
     const auth = getAdminAuth();
     const cols = colors.length > 0 ? colors : [null];
     try {
@@ -154,7 +156,7 @@ export default function EditProductPage() {
   }
 
   async function removeColor(c: string) {
-    if (!confirm(`Remove color "${c}"? This deletes every existing variant using it.`)) return;
+    if (!(await confirm({ title: 'Remove color', message: `Remove color "${c}"? This deletes every existing variant using it.`, confirmLabel: 'Remove', danger: true }))) return;
     const auth = getAdminAuth();
     const rows = sizes.length > 0 ? sizes : [null];
     try {

@@ -37,7 +37,7 @@ function validateAddress(address: ShippingAddressRequest): Partial<Record<keyof 
   if (!address.email.trim()) errors.email = 'Required';
   else if (!EMAIL_RE.test(address.email.trim())) errors.email = 'Enter a valid email address';
   if (!address.phone || !address.phone.trim()) errors.phone = 'Required -- needed to generate your shipping label';
-  else if (!PHONE_RE.test(address.phone.trim())) errors.phone = 'Enter a valid US phone number';
+  else if (!PHONE_RE.test(address.phone.trim())) errors.phone = 'Enter a 10-digit US phone number, e.g. 212-456-7890';
   if (!address.line1.trim()) errors.line1 = 'Required';
   if (!address.city.trim()) errors.city = 'Required';
   if (!address.state.trim()) errors.state = 'Required';
@@ -327,7 +327,7 @@ export default function CheckoutPage() {
                   <Field
                     label="Phone"
                     type="tel"
-                    placeholder="(555) 123-4567"
+                    placeholder="212-456-7890"
                     value={address.phone ?? ''}
                     onChange={(v) => updateAddress('phone', v)}
                     error={addressErrors.phone}
