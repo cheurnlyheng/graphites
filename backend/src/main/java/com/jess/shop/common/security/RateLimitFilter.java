@@ -62,11 +62,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     /** Railway (and most PaaS hosts) sit behind a reverse proxy, so the "real" client IP arrives via
-     * this header rather than as the TCP peer address -- falls back to that for local dev. */
+     * this header rather than as the TCP peer address -- falls back to that for local dev.
+     *
+     * Deliberately takes the LAST entry, not the first: a client can freely set its own
+     * X-Forwarded-For on the request it sends, so if a trusted proxy *appends* to that (the
+     * standard behavior, e.g. Cloudflare) rather than replacing it outright, the first entry is
+     * attacker-controlled and the last is the one the trusted proxy itself observed and added.
+     * Only safe because exactly one hop (Railway's edge) is trusted here; if a second trusted
+     * proxy is ever added in front of it, this needs to skip that many entries from the end
+     * instead of always taking the last one. */
     private static String clientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            String[] hops = forwarded.split(",");
+            return hops[hops.length - 1].trim();
         }
         return request.getRemoteAddr();
     }
