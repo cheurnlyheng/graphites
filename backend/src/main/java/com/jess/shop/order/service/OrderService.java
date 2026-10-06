@@ -253,7 +253,7 @@ public class OrderService {
 
     /** Admin-initiated cancellation of an order that hasn't shipped yet -- refunds the full payment via
      * Stripe and puts the stock back. Once an order has shipped, cancellation isn't meaningful anymore;
-     * use the returns flow instead (ReturnService.markReceivedAndRefund), which is the source of truth
+     * use the returns flow instead (ReturnService.refund), which is the source of truth
      * for post-shipment refunds. */
     // Locked for the same reason ShipmentService.buyLabel locks the order row: without it, two
     // concurrent cancel requests for the same order (trivial to fire deliberately -- this is a public,

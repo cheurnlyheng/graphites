@@ -3,17 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch, mediaUrl } from '@/lib/api';
+import { apiFetch, mediaUrl, ApiError } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { PageResponse, ReturnResponse } from '@/lib/types';
+import type { PageResponse, ReturnResponse, ShippingRateOption } from '@/lib/types';
 
 export default function AdminReturnsPage() {
   const router = useRouter();
   const [returns, setReturns] = useState<ReturnResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'ALL' | 'REQUESTED' | 'APPROVED' | 'RESOLVED'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'REQUESTED' | 'APPROVED' | 'RECEIVED' | 'RESOLVED'>('ALL');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [statusById, setStatusById] = useState<Record<string, string>>({});
+
+  // Rate-shopping state for buying a return label -- keyed by return id, since several cards can be
+  // mid-flow (fetching rates, or showing a rate list) at once in this list page.
+  const [ratesById, setRatesById] = useState<Record<string, ShippingRateOption[]>>({});
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
 
   function load() {
     const auth = getAdminAuth();
@@ -38,12 +45,80 @@ export default function AdminReturnsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function act(id: string, action: 'approve' | 'reject') {
+  function setMsg(id: string, msg: string) {
+    setStatusById((s) => ({ ...s, [id]: msg }));
+  }
+
+  async function approve(id: string, shopFault: boolean) {
     setActionLoading(id);
     const auth = getAdminAuth();
     try {
-      await apiFetch(`/api/admin/returns/${id}/${action}`, { method: 'POST', token: auth?.token });
+      await apiFetch(`/api/admin/returns/${id}/approve`, { method: 'POST', token: auth?.token, body: { shopFault } });
       load();
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not approve this return.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function confirmReject(id: string) {
+    setActionLoading(id);
+    const auth = getAdminAuth();
+    try {
+      await apiFetch(`/api/admin/returns/${id}/reject`, { method: 'POST', token: auth?.token, body: { note: rejectNote.trim() || null } });
+      setRejectingId(null);
+      setRejectNote('');
+      load();
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not reject this return.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function fetchReturnRates(id: string) {
+    setActionLoading(id);
+    const auth = getAdminAuth();
+    try {
+      const res = await apiFetch<{ rates: ShippingRateOption[] }>(`/api/admin/returns/${id}/return-rates`, { token: auth?.token });
+      setRatesById((r) => ({ ...r, [id]: res.rates }));
+      if (res.rates.length === 0) setMsg(id, 'No return shipping rates are available for this address.');
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not fetch return shipping rates.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function buyReturnLabel(id: string, rateObjectId: string, provider: string, amount: string) {
+    setActionLoading(id);
+    setMsg(id, 'Buying return label…');
+    const auth = getAdminAuth();
+    try {
+      await apiFetch(`/api/admin/returns/${id}/return-label`, {
+        method: 'POST',
+        token: auth?.token,
+        body: { rateObjectId, carrier: provider, amount, returnLabel: true }
+      });
+      setRatesById((r) => ({ ...r, [id]: [] }));
+      setMsg(id, 'Return label bought and emailed to the customer.');
+      load();
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not buy the return label.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function markReceived(id: string) {
+    setActionLoading(id);
+    const auth = getAdminAuth();
+    try {
+      await apiFetch(`/api/admin/returns/${id}/received`, { method: 'POST', token: auth?.token });
+      load();
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not mark this return as received.');
     } finally {
       setActionLoading(null);
     }
@@ -55,6 +130,8 @@ export default function AdminReturnsPage() {
     try {
       await apiFetch(`/api/admin/returns/${id}/resolve`, { method: 'POST', token: auth?.token, body: { restock } });
       load();
+    } catch (err) {
+      setMsg(id, err instanceof ApiError ? err.message : 'Could not refund this return.');
     } finally {
       setActionLoading(null);
     }
@@ -62,11 +139,13 @@ export default function AdminReturnsPage() {
 
   const requestedCount = returns.filter((r) => r.status === 'REQUESTED').length;
   const approvedCount = returns.filter((r) => r.status === 'APPROVED').length;
+  const receivedCount = returns.filter((r) => r.status === 'RECEIVED').length;
 
   const filteredReturns = returns.filter((r) => {
     if (filter === 'REQUESTED') return r.status === 'REQUESTED';
     if (filter === 'APPROVED') return r.status === 'APPROVED';
-    if (filter === 'RESOLVED') return r.status !== 'REQUESTED' && r.status !== 'APPROVED';
+    if (filter === 'RECEIVED') return r.status === 'RECEIVED';
+    if (filter === 'RESOLVED') return r.status === 'REFUNDED' || r.status === 'REJECTED';
     return true;
   });
 
@@ -85,7 +164,7 @@ export default function AdminReturnsPage() {
             <span className="text-sm font-semibold text-[#10100F]/50">({returns.length} total)</span>
           </div>
           <p className="mt-2 text-sm text-[#10100F]/60 max-w-2xl">
-            Inspect customer return requests, approve shipments, verify returned garment condition, and issue inventory restocks and refunds.
+            Approve or reject claims, buy return labels, and only refund once the item is back and inspected.
           </p>
         </div>
 
@@ -126,13 +205,23 @@ export default function AdminReturnsPage() {
         </button>
         <button
           onClick={() => setFilter('APPROVED')}
-          className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${
+          className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${
             filter === 'APPROVED'
               ? 'bg-[#10100F] text-white shadow-2xs'
               : 'border border-[#e5ded2] bg-white text-[#10100F]/70 hover:bg-[#f3f3f1] hover:text-[#10100F]'
           }`}
         >
-          In Transit / Approved ({approvedCount})
+          Approved — Awaiting Shipment ({approvedCount})
+        </button>
+        <button
+          onClick={() => setFilter('RECEIVED')}
+          className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-all ${
+            filter === 'RECEIVED'
+              ? 'bg-[#10100F] text-white shadow-2xs'
+              : 'border border-[#e5ded2] bg-white text-[#10100F]/70 hover:bg-[#f3f3f1] hover:text-[#10100F]'
+          }`}
+        >
+          Received — Pending Inspection ({receivedCount})
         </button>
         <button
           onClick={() => setFilter('RESOLVED')}
@@ -179,7 +268,16 @@ export default function AdminReturnsPage() {
                     Submitted on {new Date(r.requestedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                   </p>
                 </div>
-                <StatusBadge status={r.status} />
+                <div className="flex items-center gap-2">
+                  {r.shopFault !== null && (
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                      r.shopFault ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-orange-50 text-orange-800 border border-orange-200'
+                    }`}>
+                      {r.shopFault ? 'Shop Fault' : 'Customer Fault'}
+                    </span>
+                  )}
+                  <StatusBadge status={r.status} />
+                </div>
               </div>
 
               {/* Customer Reason Box */}
@@ -246,41 +344,170 @@ export default function AdminReturnsPage() {
                 </div>
               </div>
 
+              {/* Return Label Info, once bought */}
+              {r.returnLabelUrl && (
+                <div className="rounded-xl border border-[#e5ded2] bg-[#fbfbfb] p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-[#10100F]/70">
+                    <span className="font-bold text-[#10100F]">Return label bought</span>
+                    {r.returnLabelCost != null && <span> · ${r.returnLabelCost.toFixed(2)}</span>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a href={r.returnLabelUrl} target="_blank" rel="noopener noreferrer"
+                       className="text-xs font-bold text-[#10100F] hover:underline">
+                      View Label ↗
+                    </a>
+                    {r.returnTrackingUrl && (
+                      <a href={r.returnTrackingUrl} target="_blank" rel="noopener noreferrer"
+                         className="text-xs font-bold text-[#10100F] hover:underline">
+                        Track Package ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {statusById[r.id] && (
+                <p className="text-xs p-2.5 rounded-lg bg-[#f3f3f1] text-[#10100F]/80 font-medium">
+                  {statusById[r.id]}
+                </p>
+              )}
+
+              {/* Reject note box */}
+              {rejectingId === r.id && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-rose-900">Reject this return?</p>
+                  <textarea
+                    value={rejectNote}
+                    onChange={(e) => setRejectNote(e.target.value)}
+                    placeholder="Optional note to the customer explaining why…"
+                    rows={2}
+                    className="w-full rounded-lg border border-rose-200 bg-white p-2.5 text-xs text-[#10100F] focus:outline-none focus:border-rose-400"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={actionLoading === r.id}
+                      onClick={() => confirmReject(r.id)}
+                      className="rounded-full bg-rose-700 text-white px-5 py-2 text-xs font-bold uppercase tracking-wider hover:bg-rose-800 disabled:opacity-50 transition-colors active:scale-95"
+                    >
+                      {actionLoading === r.id ? 'Processing…' : 'Confirm Reject'}
+                    </button>
+                    <button
+                      onClick={() => { setRejectingId(null); setRejectNote(''); }}
+                      className="text-xs uppercase text-[#10100F]/40 hover:text-[#10100F]"
+                    >
+                      Never mind
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="pt-2 flex flex-wrap items-center gap-3">
-                {r.status === 'REQUESTED' && (
+                {r.status === 'REQUESTED' && rejectingId !== r.id && (
                   <>
                     <button
                       disabled={actionLoading === r.id}
-                      onClick={() => act(r.id, 'approve')}
-                      className="rounded-full bg-[#10100F] text-white px-6 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                      onClick={() => approve(r.id, true)}
+                      className="rounded-full bg-[#10100F] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
                     >
-                      {actionLoading === r.id ? 'Processing…' : 'Approve Return Claim'}
+                      {actionLoading === r.id ? 'Processing…' : 'Approve — Shop’s Fault'}
                     </button>
                     <button
                       disabled={actionLoading === r.id}
-                      onClick={() => act(r.id, 'reject')}
-                      className="rounded-full border border-red-200 text-red-700 bg-red-50/50 px-6 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-red-100/60 disabled:opacity-50 transition-colors active:scale-95"
+                      onClick={() => approve(r.id, false)}
+                      className="rounded-full border border-[#e5ded2] bg-white text-[#10100F] px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#f3f3f1] disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                    >
+                      Approve — Customer&apos;s Fault
+                    </button>
+                    <button
+                      disabled={actionLoading === r.id}
+                      onClick={() => setRejectingId(r.id)}
+                      className="rounded-full border border-red-200 text-red-700 bg-red-50/50 px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-red-100/60 disabled:opacity-50 transition-colors active:scale-95"
                     >
                       Reject Claim
                     </button>
                   </>
                 )}
-                {r.status === 'APPROVED' && (
+
+                {r.status === 'APPROVED' && rejectingId !== r.id && (
+                  <div className="w-full space-y-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {!r.returnLabelUrl && (
+                        <button
+                          disabled={actionLoading === r.id}
+                          onClick={() => fetchReturnRates(r.id)}
+                          className="rounded-full bg-[#10100F] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                        >
+                          {actionLoading === r.id ? 'Fetching…' : 'Get Return Shipping Rates'}
+                        </button>
+                      )}
+                      <button
+                        disabled={actionLoading === r.id}
+                        onClick={() => markReceived(r.id)}
+                        className="rounded-full border border-[#e5ded2] bg-white text-[#10100F] px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#f3f3f1] disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                      >
+                        Mark as Received
+                      </button>
+                      <button
+                        disabled={actionLoading === r.id}
+                        onClick={() => setRejectingId(r.id)}
+                        className="rounded-full border border-red-200 text-red-700 bg-red-50/50 px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-red-100/60 disabled:opacity-50 transition-colors active:scale-95"
+                      >
+                        Reject Claim
+                      </button>
+                    </div>
+
+                    {ratesById[r.id] && ratesById[r.id].length > 0 && (
+                      <div className="space-y-2">
+                        {ratesById[r.id].map((rate) => (
+                          <div
+                            key={rate.rateObjectId}
+                            className="flex items-center justify-between gap-2 rounded-xl border border-[#e5ded2] hover:border-[#10100F] p-3 text-xs transition-colors"
+                          >
+                            <div>
+                              <p className="font-bold text-[#10100F]">
+                                {rate.provider} {rate.serviceLevel}
+                              </p>
+                              <p className="text-xs text-[#10100F]/60 mt-0.5">
+                                ${rate.amount} {rate.currency} • {rate.estimatedDays ?? '?'} days
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => buyReturnLabel(r.id, rate.rateObjectId, rate.provider, rate.amount)}
+                              disabled={actionLoading === r.id}
+                              className="rounded-full bg-[#10100F] hover:bg-neutral-800 text-white px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider transition-all shrink-0 active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Buy Label
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {r.status === 'RECEIVED' && rejectingId !== r.id && (
                   <>
                     <button
                       disabled={actionLoading === r.id}
                       onClick={() => resolve(r.id, true)}
-                      className="rounded-full bg-[#10100F] text-white px-6 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                      className="rounded-full bg-[#10100F] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
                     >
-                      {actionLoading === r.id ? 'Processing…' : 'Received In Warehouse — Restock & Refund'}
+                      {actionLoading === r.id ? 'Processing…' : 'Confirm Refund & Restock'}
                     </button>
                     <button
                       disabled={actionLoading === r.id}
                       onClick={() => resolve(r.id, false)}
-                      className="rounded-full border border-[#e5ded2] bg-white text-[#10100F] px-6 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#f3f3f1] disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
+                      className="rounded-full border border-[#e5ded2] bg-white text-[#10100F] px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#f3f3f1] disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
                     >
-                      Received Damaged — Refund Only (No Restock)
+                      Confirm Refund — Damaged (No Restock)
+                    </button>
+                    <button
+                      disabled={actionLoading === r.id}
+                      onClick={() => setRejectingId(r.id)}
+                      className="rounded-full border border-red-200 text-red-700 bg-red-50/50 px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-red-100/60 disabled:opacity-50 transition-colors active:scale-95"
+                    >
+                      Reject — Doesn&apos;t Match Claim
                     </button>
                   </>
                 )}

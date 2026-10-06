@@ -231,6 +231,10 @@ export interface ReturnResponse {
   reason: string | null;
   requestedAt: string;
   resolvedAt: string | null;
+  shopFault: boolean | null;
+  returnLabelUrl: string | null;
+  returnTrackingUrl: string | null;
+  returnLabelCost: number | null;
   items: ReturnItemResponse[];
   photoUrls: string[];
 }

@@ -31,6 +31,11 @@ public class Shipment {
     @Column(name = "order_id", nullable = false)
     private UUID orderId;
 
+    /** Only set when this is a return label (see ReturnService.buyReturnLabel) -- ties it to the
+     * specific return request it was bought for, since an order can have more than one over its life. */
+    @Column(name = "return_request_id")
+    private UUID returnRequestId;
+
     private String carrier;
 
     @Column(name = "tracking_number")

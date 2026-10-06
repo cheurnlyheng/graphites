@@ -17,7 +17,9 @@ public class AdminShippingDtos {
     // carrier and amount are passed through from the rate the admin picked (e.g. "USPS", "8.42") --
     // Shippo's transaction response has no short carrier code or cost field of its own, only a
     // tracking *URL* and the rate's object_id, which doesn't carry its price along with it.
-    public record BuyLabelRequest(@NotBlank String rateObjectId, String carrier, String amount, boolean returnLabel) {}
+    // returnRequestId is only set when ReturnService.buyReturnLabel builds this internally -- never
+    // supplied directly by the outbound-label frontend flow.
+    public record BuyLabelRequest(@NotBlank String rateObjectId, String carrier, String amount, UUID returnRequestId, boolean returnLabel) {}
 
     public record ShipmentDto(UUID id, UUID orderId, String carrier, String trackingNumber, String labelUrl,
                                String trackingUrl, boolean returnLabel, Instant shippedAt, BigDecimal cost) {}

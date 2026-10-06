@@ -83,7 +83,7 @@ public class ShipmentService {
 
         AddressPayload to = new AddressPayload(shipTo.getFullName(), shipTo.getLine1(), shipTo.getLine2(), shipTo.getCity(),
             shipTo.getState(), shipTo.getPostalCode(), shipTo.getCountry(), shipTo.getPhone(), order.getEmail());
-        return quoteRates(to, estimateParcel(order));
+        return quoteRates(warehouseAddress(), to, estimateParcel(order));
     }
 
     /** Same rate quote, before an order even exists -- the checkout page calls this once the customer
@@ -92,7 +92,23 @@ public class ShipmentService {
     public ShippingRatesResponse getRatesForAddress(List<CartItemResponse> cartItems, ShippingAddressRequest shipTo) {
         AddressPayload to = new AddressPayload(shipTo.fullName(), shipTo.line1(), shipTo.line2(), shipTo.city(),
             shipTo.state(), shipTo.postalCode(), shipTo.country(), shipTo.phone(), shipTo.email());
-        return quoteRates(to, estimateParcelForCart(cartItems));
+        return quoteRates(warehouseAddress(), to, estimateParcelForCart(cartItems));
+    }
+
+    /** Reversed-direction quote for a RETURN label: FROM the customer's saved shipping address, TO
+     * the warehouse -- the opposite of every other quote in this class, which all go warehouse ->
+     * customer. See ReturnService.getReturnRates. */
+    public ShippingRatesResponse getReturnRatesForOrder(UUID orderId) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+        if (order.getShippingAddressId() == null) {
+            throw new IllegalStateException("Order has no shipping address on file, so a return label can't be quoted");
+        }
+        Address shipFrom = addressRepository.findById(order.getShippingAddressId())
+            .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found"));
+
+        AddressPayload from = new AddressPayload(shipFrom.getFullName(), shipFrom.getLine1(), shipFrom.getLine2(), shipFrom.getCity(),
+            shipFrom.getState(), shipFrom.getPostalCode(), shipFrom.getCountry(), shipFrom.getPhone(), order.getEmail());
+        return quoteRates(from, warehouseAddress(), estimateParcel(order));
     }
 
     /** Guards against a forged checkout request: the customer picked a rate from a real quote earlier
@@ -115,8 +131,8 @@ public class ShipmentService {
         }
     }
 
-    private ShippingRatesResponse quoteRates(AddressPayload to, ParcelPayload parcel) {
-        ShipmentResponse response = shippoService.getRates(warehouseAddress(), to, parcel);
+    private ShippingRatesResponse quoteRates(AddressPayload from, AddressPayload to, ParcelPayload parcel) {
+        ShipmentResponse response = shippoService.getRates(from, to, parcel);
         List<ShippingRateOption> options = response.rates().stream()
             .map(r -> new ShippingRateOption(r.objectId(), r.provider(),
                 r.serviceLevel() != null ? String.valueOf(r.serviceLevel().get("name")) : null,
@@ -148,6 +164,7 @@ public class ShipmentService {
         BigDecimal cost = parseAmount(request.amount());
         Shipment shipment = Shipment.builder()
             .orderId(orderId)
+            .returnRequestId(request.returnRequestId())
             .carrier(request.carrier())
             .trackingNumber(transaction.trackingNumber())
             .shippoTransactionId(transaction.objectId())

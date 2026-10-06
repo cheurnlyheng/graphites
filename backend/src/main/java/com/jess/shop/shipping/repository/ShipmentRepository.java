@@ -18,4 +18,9 @@ public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
 
     /** Looks up the shipment a Shippo tracking webhook is about, by the carrier tracking number. */
     Optional<Shipment> findByTrackingNumber(String trackingNumber);
+
+    /** The return label bought for a given return request, if any -- see ReturnService.refund (to
+     * deduct its cost for a customer-fault return) and ReturnService.toResponse (to show it to the
+     * admin/customer). Ordered by createdAt in case a label was ever re-bought after being lost. */
+    Optional<Shipment> findFirstByReturnRequestIdOrderByCreatedAtDesc(UUID returnRequestId);
 }

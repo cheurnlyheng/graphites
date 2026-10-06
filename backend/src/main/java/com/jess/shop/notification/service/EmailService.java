@@ -161,6 +161,74 @@ public class EmailService {
         send(warehouseEmail, "Oversold item on order " + orderId, html);
     }
 
+    /** Fired once per return request (see ReturnService.create) so the shop finds out without needing to
+     * keep /admin/returns open. Links the photos rather than attaching them -- same pattern as every
+     * other link in this app, and Resend has no attachment plumbing wired up here anyway. */
+    public void sendNewReturnNotification(UUID returnId, UUID orderId, String customerEmail, String reason, List<String> photoUrls) {
+        String returnUrl = frontendBaseUrl + "/admin/returns";
+        String reasonLine = (reason != null && !reason.isBlank()) ? "<p>%s</p>".formatted(escapeHtml(reason)) : "";
+        String photoLinks = photoUrls.stream()
+            .map(url -> "<a href=\"%s\" style=\"margin-right:8px;\">Photo</a>".formatted(url))
+            .collect(Collectors.joining());
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>New return request</h2>
+              <p>From <strong>%s</strong> on order <strong>%s</strong>.</p>
+              %s
+              <p>%s</p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Review this return</a></p>
+              <p style="color:#888;font-size:13px;">Return reference: %s</p>
+            </div>
+            """.formatted(escapeHtml(customerEmail), orderId, reasonLine, photoLinks, returnUrl, returnId);
+        send(orderNotificationEmail, "New return request on order " + orderId, html);
+    }
+
+    /** Fired once the admin buys the return label (see ReturnService.buyReturnLabel) -- this is what the
+     * "we'll email you with return label instructions once reviewed" message on the order page refers to. */
+    public void sendReturnLabel(String toEmail, UUID returnId, String labelUrl, String trackingNumber, String carrier) {
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your return label is ready</h2>
+              <p>Print the label below, attach it to your package, and drop it off with %s.</p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Download return label</a></p>
+              <p>Tracking number: <strong>%s</strong></p>
+              <p style="color:#888;font-size:13px;">Once we receive and inspect the item, we'll process your refund. Return reference: %s</p>
+            </div>
+            """.formatted(escapeHtml(carrier), labelUrl, trackingNumber, returnId);
+        send(toEmail, "Your return label is ready", html);
+    }
+
+    /** note is an optional admin-typed explanation -- same pattern as sendOrderCancellation's reasonLine. */
+    public void sendReturnRejected(String toEmail, UUID returnId, String note) {
+        String noteLine = (note != null && !note.isBlank()) ? "<p>%s</p>".formatted(escapeHtml(note)) : "";
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your return request wasn't approved</h2>
+              <p>We're not able to process this return.</p>
+              %s
+              <p style="color:#888;font-size:13px;">Questions about this decision? Just reply to this email and mention return reference %s.</p>
+            </div>
+            """.formatted(noteLine, returnId);
+        send(toEmail, "Update on your return request", html);
+    }
+
+    /** labelDeducted is only ever non-zero on a customer-fault return (see ReturnService.refund) --
+     * called out explicitly so the refund total doesn't look like a mistake. */
+    public void sendReturnRefunded(String toEmail, UUID returnId, BigDecimal refundAmount, BigDecimal labelDeducted) {
+        String deductionLine = (labelDeducted != null && labelDeducted.compareTo(BigDecimal.ZERO) > 0)
+            ? "<p style=\"color:#888;font-size:13px;\">Return shipping ($%s) was deducted from this refund.</p>".formatted(labelDeducted)
+            : "";
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your refund has been issued</h2>
+              <p><strong>$%s</strong> has been refunded to your original payment method.</p>
+              %s
+              <p style="color:#888;font-size:13px;">Return reference: %s</p>
+            </div>
+            """.formatted(refundAmount, deductionLine, returnId);
+        send(toEmail, "Your refund has been issued", html);
+    }
+
     /** The cancellation reason is free text an admin typed, dropped straight into an HTML email -- escaped
      * so it can't break the markup (or, worse, inject a link/script) if someone pastes something odd in. */
     private static String escapeHtml(String s) {

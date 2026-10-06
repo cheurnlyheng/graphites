@@ -48,4 +48,11 @@ public class ReturnRequest {
 
     @Column(name = "resolved_at")
     private Instant resolvedAt;
+
+    /** Who pays for return shipping -- set by the admin at approval time (see ReturnService.approve).
+     * true = shop's fault (defective/wrong item), shop eats the label cost. false = customer's choice
+     * (sizing, changed mind), the label cost gets deducted from the refund at resolution time. Null
+     * until approved. */
+    @Column(name = "shop_fault")
+    private Boolean shopFault;
 }

@@ -15,6 +15,12 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Mirrors ReturnService.RETURN_WINDOW_DAYS / MIN_CONDITION_PHOTOS on the backend -- this is just an
+// early, friendlier check so someone past the window doesn't fill out the whole form first; the
+// backend enforces both for real regardless of what this shows.
+const RETURN_WINDOW_DAYS = 30;
+const MIN_RETURN_PHOTOS = 2;
+
 type MilestoneState = 'done' | 'current' | 'upcoming';
 
 export default function OrderDetailPage() {
@@ -96,8 +102,8 @@ export default function OrderDetailPage() {
       setStatus('Please select at least one item to return.');
       return;
     }
-    if (photos.length === 0) {
-      setStatus('Please upload at least one photo showing the item’s condition.');
+    if (photos.length < MIN_RETURN_PHOTOS) {
+      setStatus(`Please upload at least ${MIN_RETURN_PHOTOS} photos showing the item's condition (front and back).`);
       return;
     }
     setSubmittingReturn(true);
@@ -174,6 +180,10 @@ export default function OrderDetailPage() {
   // actually arrived. Before that, cancelling the order outright is the right action instead (see
   // canCancel below); the two are mutually exclusive since an order can't be both PAID and DELIVERED.
   const canReturn = order.status === 'DELIVERED';
+  const daysSinceDelivery = order.deliveredAt
+    ? Math.floor((Date.now() - new Date(order.deliveredAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const returnWindowExpired = daysSinceDelivery !== null && daysSinceDelivery > RETURN_WINDOW_DAYS;
   const canCancel = order.status === 'PAID';
   const isShipped = order.status === 'SHIPPED' || order.status === 'DELIVERED';
   const isDelivered = order.status === 'DELIVERED';
@@ -575,7 +585,21 @@ export default function OrderDetailPage() {
           {/* Returns & Exchange Section -- only once it's actually arrived */}
           {canReturn && (
             <div className="rounded-xl border border-[#e5ded2] bg-[#fbfbfb] p-6 sm:p-8">
-              {!showReturnForm ? (
+              {returnWindowExpired ? (
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-[#10100F] mb-1">
+                    Return window closed
+                  </h3>
+                  <p className="text-xs text-[#10100F]/60">
+                    This order was delivered {daysSinceDelivery} days ago, which is past our {RETURN_WINDOW_DAYS}-day return
+                    window. See our{' '}
+                    <Link href="/returns-policy" className="underline hover:text-[#10100F]">
+                      return policy
+                    </Link>{' '}
+                    for details.
+                  </p>
+                </div>
+              ) : !showReturnForm ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-sm font-bold uppercase tracking-wide text-[#10100F] mb-1">
@@ -648,7 +672,7 @@ export default function OrderDetailPage() {
                       Photos of the item&rsquo;s condition <span className="text-rose-700">(required)</span>
                     </label>
                     <p className="text-[11px] text-[#10100F]/50">
-                      At least one photo showing the item as it is now -- this is how we verify condition before approving a refund.
+                      At least {MIN_RETURN_PHOTOS} photos (front and back) showing the item as it is now -- this is how we verify condition before approving a refund.
                     </p>
                     <div className="flex flex-wrap gap-2.5 pt-1">
                       {photos.map((url) => (
