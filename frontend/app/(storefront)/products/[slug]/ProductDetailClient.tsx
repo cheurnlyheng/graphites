@@ -249,7 +249,7 @@ export function ProductDetailClient({ product }: { product: ProductDetailRespons
           <div className="border-b border-[#e5ded2] pb-8 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#10100F]/50 block">
-                Weatherproof Series
+                Core Collection
               </span>
               <Link
                 href="/products"
@@ -377,17 +377,17 @@ export function ProductDetailClient({ product }: { product: ProductDetailRespons
             )}
           </div>
 
-          {/* Technical Specifications Accordion */}
+          {/* Product Details Accordion */}
           <div className="border-t border-[#e5ded2] pt-8 space-y-5 text-xs sm:text-sm">
             <div className="space-y-2">
               <span className="font-bold uppercase tracking-wider text-[#10100F] block">
-                Technical Highlights
+                Product Details
               </span>
               <ul className="list-disc pl-4 space-y-1.5 text-[#10100F]/70 pt-1">
-                <li>Engineered for wet weather conditions and daily mobility.</li>
-                <li>Waterproof polyurethane coated textile with welded seams.</li>
-                <li>Breathable ventilation storm flap and adjustable hood drawstrings.</li>
-                <li>Matte utilitarian hardware finish.</li>
+                <li>Garment-washed cotton with a soft, broken-in feel.</li>
+                <li>Relaxed, true-to-size fit for everyday wear.</li>
+                <li>Reinforced seams built to hold up wash after wash.</li>
+                <li>Pre-shrunk fabric that keeps its shape over time.</li>
               </ul>
             </div>
 

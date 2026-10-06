@@ -9,12 +9,12 @@ interface SearchModalProps {
 }
 
 const trendingSearches = [
-  'Waterproof Backpack',
-  'Crescent Bag',
-  'Rain Jacket',
-  'Recycled Nylon Tote',
-  'Travel Duffel',
-  'Crossbody'
+  'Graphic Tee',
+  'Hoodie',
+  'Cargo Pants',
+  'Crewneck',
+  'Vintage Wash',
+  'Denim Jacket'
 ];
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
@@ -58,12 +58,20 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        onClick={onClose}
         className="fixed inset-0 bg-ink/60 backdrop-blur-sm transition-opacity animate-fade-in"
       />
 
-      <div className="relative min-h-screen flex items-start justify-center pt-20 px-4 sm:px-6">
-        <div className="relative w-full max-w-2xl bg-paper-pure border border-line shadow-float p-6 sm:p-8 animate-fade-in">
+      {/* This wrapper spans the full screen (min-h-screen) and sits on top of the backdrop in
+          paint order, so the backdrop's own onClick would never fire -- the click target here
+          instead, with the modal box below stopping propagation so clicks inside it don't close it. */}
+      <div
+        onClick={onClose}
+        className="relative min-h-screen flex items-start justify-center pt-20 px-4 sm:px-6"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-2xl bg-paper-pure border border-line shadow-float p-6 sm:p-8 animate-fade-in"
+        >
           <div className="flex items-center justify-between pb-4 border-b border-line">
             <span className="text-[11px] font-bold uppercase tracking-widest text-ink/60">
               Quick Search
@@ -83,7 +91,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 ref={inputRef}
                 type="text"
                 name="search"
-                placeholder="Search bags, outerwear, accessories..."
+                placeholder="Search tees, hoodies, pants..."
                 className="w-full bg-transparent text-lg sm:text-xl font-medium text-ink placeholder:text-ink/30 focus:outline-none"
               />
               <button
