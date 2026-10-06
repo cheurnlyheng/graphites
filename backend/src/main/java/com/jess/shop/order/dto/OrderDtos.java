@@ -5,6 +5,7 @@ import com.jess.shop.shipping.dto.CheckoutShippingDtos.ShippingAddressRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,7 +34,7 @@ public class OrderDtos {
      * travel here verbatim from that chosen ShippingRateOption. */
     public record CheckoutSessionRequest(@Valid @NotNull ShippingAddressRequest shippingAddress,
                                           @NotBlank String carrier, String serviceLevel,
-                                          @NotNull BigDecimal shippingAmount) {}
+                                          @NotNull @PositiveOrZero BigDecimal shippingAmount) {}
 
     /** reason is optional -- an admin cancelling a duplicate/test order may have nothing worth telling the
      * customer, but when given, it's included in the cancellation email verbatim. */

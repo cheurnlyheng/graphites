@@ -63,6 +63,12 @@ public class CheckoutController {
             throw new IllegalStateException("Cannot check out an empty cart");
         }
 
+        // Without this, a direct API call could claim any carrier/price it wants (e.g. shippingAmount:
+        // 0.01) and that forged amount would go straight into the real Stripe charge -- re-quotes
+        // fresh from Shippo and requires an exact match before trusting what the client submitted.
+        shipmentService.verifySelectedRate(cart.items(), request.shippingAddress(),
+            request.carrier(), request.serviceLevel(), request.shippingAmount());
+
         Order order = orderService.createPendingOrder(cart.cartId(), cart.items(), request.shippingAddress(),
             request.carrier(), request.serviceLevel(), request.shippingAmount());
 

@@ -23,10 +23,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -91,6 +93,26 @@ public class ShipmentService {
         AddressPayload to = new AddressPayload(shipTo.fullName(), shipTo.line1(), shipTo.line2(), shipTo.city(),
             shipTo.state(), shipTo.postalCode(), shipTo.country(), shipTo.phone(), shipTo.email());
         return quoteRates(to, estimateParcelForCart(cartItems));
+    }
+
+    /** Guards against a forged checkout request: the customer picked a rate from a real quote earlier
+     * (see getRatesForAddress), but nothing stops a direct API call from claiming any carrier/service/
+     * price it wants instead -- without this, that forged amount would go straight into the Stripe
+     * session as the actual shipping charge. Re-quotes fresh and requires an exact match on provider,
+     * service level, and price; rates aren't identified by a stable id across calls (Shippo mints a new
+     * object_id each time), so provider+service+amount is the only thing that can reasonably be
+     * compared between the quote the customer saw and the one being verified against now. */
+    public void verifySelectedRate(List<CartItemResponse> cartItems, ShippingAddressRequest shipTo,
+                                    String carrier, String serviceLevel, BigDecimal claimedAmount) {
+        ShippingRatesResponse freshRates = getRatesForAddress(cartItems, shipTo);
+        boolean matches = freshRates.rates().stream().anyMatch(r ->
+            r.provider().equalsIgnoreCase(carrier)
+                && Objects.equals(r.serviceLevel(), serviceLevel)
+                && new BigDecimal(r.amount()).compareTo(claimedAmount) == 0
+        );
+        if (!matches) {
+            throw new IllegalStateException("That delivery method is no longer available -- please choose a delivery method again.");
+        }
     }
 
     private ShippingRatesResponse quoteRates(AddressPayload to, ParcelPayload parcel) {

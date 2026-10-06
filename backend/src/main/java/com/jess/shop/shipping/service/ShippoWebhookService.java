@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 
@@ -37,7 +39,7 @@ public class ShippoWebhookService {
 
     @Transactional
     public void handle(String suppliedToken, TrackingWebhookPayload payload) {
-        if (webhookToken != null && !webhookToken.isBlank() && !webhookToken.equals(suppliedToken)) {
+        if (webhookToken != null && !webhookToken.isBlank() && !constantTimeEquals(webhookToken, suppliedToken)) {
             throw new IllegalArgumentException("Invalid Shippo webhook token");
         }
 
@@ -71,6 +73,17 @@ public class ShippoWebhookService {
             order.setStatus(OrderStatus.DELIVERED);
             orderRepository.save(order);
         }
+    }
+
+    // Plain String.equals short-circuits on the first mismatched byte, making the comparison time
+    // depend on how many leading characters the guess gets right -- in principle lets an attacker
+    // recover this token character-by-character via timing, rather than needing the whole thing at
+    // once. MessageDigest.isEqual is the standard constant-time comparison for exactly this case.
+    private static boolean constantTimeEquals(String expected, String actual) {
+        if (actual == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), actual.getBytes(StandardCharsets.UTF_8));
     }
 
     private Instant parseStatusDate(String statusDate) {
