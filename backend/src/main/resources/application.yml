@@ -23,6 +23,17 @@ spring:
 server:
   port: 8080
 
+# The full API schema (every endpoint, every request/response shape, including admin routes) was
+# being served publicly at /swagger-ui and /v3/api-docs -- free reconnaissance for an attacker, and
+# nothing in this project's own workflow actually uses it (everything's been verified with curl
+# directly). Disabled outright rather than left running and gated behind auth, since a browser can't
+# attach a Bearer token to a plain page navigation anyway.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 app:
   jwt:
     # No fallback on purpose: a guessable default here would quietly sign real admin tokens with a

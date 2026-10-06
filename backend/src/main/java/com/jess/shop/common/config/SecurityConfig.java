@@ -55,7 +55,11 @@ public class SecurityConfig {
                 // No customer accounts exist -- cart, checkout, orders and returns are all guest flows.
                 // Order/return access is guarded by the order id being an unguessable UUID, not by login.
                 .requestMatchers("/api/cart/**", "/api/checkout/**", "/api/orders/**", "/api/returns/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // No swagger-ui/v3/api-docs rule here on purpose -- springdoc is disabled outright
+                // (see application.yml) rather than gated behind auth, since a Bearer-token role check
+                // can't actually protect a page a browser just navigates to directly, and nothing in
+                // this project's own workflow uses it. Falls through to anyRequest().authenticated(),
+                // which would apply if it were ever re-enabled without updating this file.
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

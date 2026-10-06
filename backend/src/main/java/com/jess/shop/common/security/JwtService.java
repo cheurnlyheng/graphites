@@ -21,12 +21,14 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String secret,
                        @Value("${app.jwt.expiration-minutes}") long expirationMinutes) {
-        // HS256 requires a >=256-bit key; pad a short dev placeholder so startup doesn't crash.
+        // HS256 needs a >=256-bit key. Silently zero-padding a short secret used to let the app start
+        // "successfully" with a weak key -- the padding bytes are constant/known, so it doesn't add
+        // real entropy, it just hides a misconfiguration. Same "fail loud" policy as a missing secret.
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 32) {
-            byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
-            keyBytes = padded;
+            throw new IllegalStateException(
+                "JWT_SECRET is too short (" + keyBytes.length + " bytes; need >= 32 for HS256). " +
+                "Generate a real one, e.g.: node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\"");
         }
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.expirationMinutes = expirationMinutes;
