@@ -66,7 +66,8 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="Your rights">
         <p>
           You can ask us what information we hold about an order, or ask us to delete it where
-          we&apos;re not legally required to keep it, by emailing <FillIn>support@yourdomain.com</FillIn>.
+          we&apos;re not legally required to keep it, by emailing{' '}
+          <a href="mailto:graphites.world@gmail.com" className="underline">graphites.world@gmail.com</a>.
         </p>
       </LegalSection>
 
@@ -81,7 +82,7 @@ export default function PrivacyPolicyPage() {
         <p>
           <FillIn>Business Legal Name</FillIn><br />
           <FillIn>Business Address</FillIn><br />
-          <FillIn>support@yourdomain.com</FillIn>
+          <a href="mailto:graphites.world@gmail.com" className="underline">graphites.world@gmail.com</a>
         </p>
       </LegalSection>
     </LegalPageLayout>

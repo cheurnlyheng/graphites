@@ -45,13 +45,14 @@ export default function ReturnsPolicyPage() {
       <LegalSection heading="Order cancellations">
         <p>
           If your order hasn&apos;t shipped yet, we may be able to cancel it and refund you in full —
-          contact us as soon as possible at <FillIn>support@yourdomain.com</FillIn>.
+          contact us as soon as possible at{' '}
+          <a href="mailto:graphites.world@gmail.com" className="underline">graphites.world@gmail.com</a>.
         </p>
       </LegalSection>
 
       <LegalSection heading="Questions">
         <p>
-          Email us at <FillIn>support@yourdomain.com</FillIn> and we&apos;ll get back to you.
+          Email us at <a href="mailto:graphites.world@gmail.com" className="underline">graphites.world@gmail.com</a> and we&apos;ll get back to you.
         </p>
       </LegalSection>
     </LegalPageLayout>

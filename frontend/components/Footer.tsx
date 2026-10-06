@@ -216,7 +216,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:support@yourdomain.com" className="hover:text-white transition-colors block">
+                <a href="mailto:graphites.world@gmail.com" className="hover:text-white transition-colors block">
                   Contact Support
                 </a>
               </li>

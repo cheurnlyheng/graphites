@@ -35,6 +35,9 @@ public class EmailService {
     @Value("${app.warehouse.email}")
     private String warehouseEmail;
 
+    @Value("${app.store.order-notification-email}")
+    private String orderNotificationEmail;
+
     public EmailService(WebClient resendWebClient) {
         this.resendWebClient = resendWebClient;
     }
@@ -88,6 +91,22 @@ public class EmailService {
             </div>
             """.formatted(itemRows, subtotal, shippingAmount, taxAmount, total, addressBlock, trackUrl, orderId);
         send(toEmail, "Your order is confirmed", html);
+    }
+
+    /** Fired once per paid order (see OrderService.markPaid) so the shop finds out about a sale
+     * without needing to keep the admin dashboard open. Separate recipient from warehouse.email --
+     * that one's for operational alerts (oversold items), this is the general "you made a sale" line. */
+    public void sendNewOrderNotification(UUID orderId, String customerEmail, int itemCount, BigDecimal total) {
+        String orderUrl = frontendBaseUrl + "/admin/orders/" + orderId;
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>New order received</h2>
+              <p><strong>$%s</strong> from <strong>%s</strong> (%d item%s).</p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Open this order</a></p>
+              <p style="color:#888;font-size:13px;">Order reference: %s</p>
+            </div>
+            """.formatted(total, escapeHtml(customerEmail), itemCount, itemCount == 1 ? "" : "s", orderUrl, orderId);
+        send(orderNotificationEmail, "New order -- $" + total, html);
     }
 
     public void sendShippingConfirmation(String toEmail, UUID orderId, String carrier, String trackingNumber, String trackingUrl) {

@@ -202,6 +202,7 @@ public class OrderService {
 
         emailService.sendOrderConfirmation(order.getEmail(), order.getId(), orderItems, shippingAddress,
             order.getSubtotal(), order.getShippingAmount(), order.getTaxAmount(), order.getTotal());
+        emailService.sendNewOrderNotification(order.getId(), order.getEmail(), orderItems.size(), order.getTotal());
     }
 
     /** Checked right when the order comes in (not at checkout -- Stripe's hosted page collects the
