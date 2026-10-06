@@ -95,7 +95,8 @@ class OrderServiceTest {
         verify(variantRepository).decrementStock(variantId, 2);
         verify(variantRepository, never()).findById(any());
         verify(emailService, never()).sendOversellAlert(any(), any(), anyInt(), anyInt());
-        verify(emailService).sendOrderConfirmation(eq("buyer@example.com"), eq(orderId), eq(BigDecimal.valueOf(60)));
+        verify(emailService).sendOrderConfirmation(eq("buyer@example.com"), eq(orderId), any(), any(),
+            any(), any(), any(), eq(BigDecimal.valueOf(60)));
         verify(orderRepository).save(order);
     }
 
@@ -114,6 +115,6 @@ class OrderServiceTest {
         // Payment already succeeded -- the order still completes even though stock fell short.
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         verify(emailService).sendOversellAlert(orderId, variantId, 3, 1);
-        verify(emailService).sendOrderConfirmation(eq("buyer@example.com"), eq(orderId), any());
+        verify(emailService).sendOrderConfirmation(eq("buyer@example.com"), eq(orderId), any(), any(), any(), any(), any(), any());
     }
 }

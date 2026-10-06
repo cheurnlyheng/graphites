@@ -1,6 +1,8 @@
 package com.jess.shop.notification.service;
 
+import com.jess.shop.customer.entity.Address;
 import com.jess.shop.notification.dto.ResendDtos.SendEmailRequest;
+import com.jess.shop.order.entity.OrderItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Transactional email via Resend. A guest's order-confirmation email doubles as their only way to
  * track the order later (no account required) -- see the "track your order" link in each template. */
@@ -36,16 +39,54 @@ public class EmailService {
         this.resendWebClient = resendWebClient;
     }
 
-    public void sendOrderConfirmation(String toEmail, UUID orderId, BigDecimal total) {
+    public void sendOrderConfirmation(String toEmail, UUID orderId, List<OrderItem> items, Address shippingAddress,
+                                       BigDecimal subtotal, BigDecimal shippingAmount, BigDecimal taxAmount, BigDecimal total) {
         String trackUrl = frontendBaseUrl + "/orders/" + orderId;
+
+        String itemRows = items.stream().map(item -> {
+            String variantLine = (item.getVariantAttributesSnapshot() != null && !item.getVariantAttributesSnapshot().isBlank())
+                ? "<br><span style=\"color:#888;font-size:13px;\">%s</span>".formatted(escapeHtml(item.getVariantAttributesSnapshot()))
+                : "";
+            return """
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #eee;">%s%s<br><span style="color:#888;font-size:13px;">Qty %d &times; $%s</span></td>
+                  <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">$%s</td>
+                </tr>
+                """.formatted(escapeHtml(item.getProductNameSnapshot()), variantLine, item.getQuantity(), item.getUnitPrice(), item.getLineTotal());
+        }).collect(Collectors.joining());
+
+        String addressBlock = shippingAddress == null ? "" : """
+            <p style="margin-top:20px;">
+              <strong>Shipping to</strong><br>
+              %s<br>%s%s<br>%s%s %s<br>%s
+            </p>
+            """.formatted(
+                escapeHtml(shippingAddress.getFullName()),
+                escapeHtml(shippingAddress.getLine1()),
+                (shippingAddress.getLine2() != null && !shippingAddress.getLine2().isBlank()) ? "<br>" + escapeHtml(shippingAddress.getLine2()) : "",
+                escapeHtml(shippingAddress.getCity()),
+                (shippingAddress.getState() != null && !shippingAddress.getState().isBlank()) ? ", " + escapeHtml(shippingAddress.getState()) : "",
+                escapeHtml(shippingAddress.getPostalCode()),
+                escapeHtml(shippingAddress.getCountry()));
+
         String html = """
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
               <h2>Thank you for your order!</h2>
-              <p>Your payment of <strong>$%s</strong> went through and your order is being prepared.</p>
-              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Track your order</a></p>
-              <p style="color:#888;font-size:13px;">Order reference: %s</p>
+              <p>Your payment went through and your order is being prepared for shipment. Here's what's in it:</p>
+              <table style="width:100%%;border-collapse:collapse;margin-top:12px;">
+                %s
+              </table>
+              <table style="width:100%%;margin-top:8px;font-size:14px;color:#444;">
+                <tr><td style="padding:2px 0;">Subtotal</td><td style="text-align:right;padding:2px 0;">$%s</td></tr>
+                <tr><td style="padding:2px 0;">Shipping</td><td style="text-align:right;padding:2px 0;">$%s</td></tr>
+                <tr><td style="padding:2px 0;">Tax</td><td style="text-align:right;padding:2px 0;">$%s</td></tr>
+                <tr><td style="padding:6px 0 0;font-weight:bold;border-top:1px solid #ddd;">Total</td><td style="text-align:right;padding:6px 0 0;font-weight:bold;border-top:1px solid #ddd;">$%s</td></tr>
+              </table>
+              %s
+              <p style="margin-top:20px;"><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Track your order</a></p>
+              <p style="color:#888;font-size:13px;">Questions about this order? Just reply to this email and mention order reference %s.</p>
             </div>
-            """.formatted(total, trackUrl, orderId);
+            """.formatted(itemRows, subtotal, shippingAmount, taxAmount, total, addressBlock, trackUrl, orderId);
         send(toEmail, "Your order is confirmed", html);
     }
 

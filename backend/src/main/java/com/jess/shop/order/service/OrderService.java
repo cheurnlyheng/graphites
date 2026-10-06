@@ -168,7 +168,8 @@ public class OrderService {
             order.setBillingAddressId(billingAddress.getId());
         }
 
-        for (OrderItem item : orderItemRepository.findByOrderId(order.getId())) {
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+        for (OrderItem item : orderItems) {
             int updated = variantRepository.decrementStock(item.getProductVariantId(), item.getQuantity());
             if (updated == 0) {
                 // Payment already succeeded -- we never fail the order over this. Flag it loudly so a
@@ -199,7 +200,8 @@ public class OrderService {
             cartItemRepository.deleteByCartId(order.getCartId());
         }
 
-        emailService.sendOrderConfirmation(order.getEmail(), order.getId(), order.getTotal());
+        emailService.sendOrderConfirmation(order.getEmail(), order.getId(), orderItems, shippingAddress,
+            order.getSubtotal(), order.getShippingAmount(), order.getTaxAmount(), order.getTotal());
     }
 
     /** Checked right when the order comes in (not at checkout -- Stripe's hosted page collects the
