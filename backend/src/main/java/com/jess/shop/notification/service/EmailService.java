@@ -42,8 +42,7 @@ public class EmailService {
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
               <h2>Thank you for your order!</h2>
               <p>Your payment of <strong>$%s</strong> went through and your order is being prepared.</p>
-              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;
-                 text-decoration:none;border-radius:4px;">Track your order</a></p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Track your order</a></p>
               <p style="color:#888;font-size:13px;">Order reference: %s</p>
             </div>
             """.formatted(total, trackUrl, orderId);
