@@ -16,6 +16,7 @@ export default function AdminOrderDetailPage() {
   const [shipments, setShipments] = useState<ShipmentResponse[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [shipping, setShipping] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -79,13 +80,30 @@ export default function AdminOrderDetailPage() {
         body: { rateObjectId, carrier: provider, returnLabel: false }
       });
       setRates([]);
-      setStatus('Label purchased — order marked as shipped.');
+      setStatus('Label purchased — pack the order, then mark it shipped once it\'s with the carrier.');
       load();
     } catch (err) {
       setStatus(err instanceof ApiError ? `Could not purchase the label: ${err.message}` : 'Could not purchase the label.');
     } finally {
       buyingRef.current = false;
       setBuying(false);
+    }
+  }
+
+  /** Separate from buying the label -- buying it just means packing has started; this is the
+   * actual "handed to the carrier" moment, and the only point the shipped-confirmation email goes out. */
+  async function markShipped() {
+    setShipping(true);
+    setStatus('Marking as shipped…');
+    const auth = getAdminAuth();
+    try {
+      await apiFetch(`/api/admin/orders/${params.id}/shipping/ship`, { method: 'POST', token: auth?.token });
+      setStatus('Order marked as shipped — the customer has been emailed.');
+      load();
+    } catch (err) {
+      setStatus(err instanceof ApiError ? `Could not mark this order as shipped: ${err.message}` : 'Could not mark this order as shipped.');
+    } finally {
+      setShipping(false);
     }
   }
 
@@ -342,7 +360,7 @@ export default function AdminOrderDetailPage() {
               )}
             </div>
 
-            {order.status !== 'PAID' && (
+            {order.status !== 'PAID' && order.status !== 'LABEL_PURCHASED' && (
               <p className="text-xs p-2.5 rounded-lg bg-amber-50 text-amber-900 font-medium">
                 {order.status === 'PENDING' && (
                   <>
@@ -371,6 +389,23 @@ export default function AdminOrderDetailPage() {
               </svg>
               <span>Get Shipping Rates</span>
             </button>
+            )}
+
+            {order.status === 'LABEL_PURCHASED' && (
+              <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3 space-y-2.5">
+                <p className="text-xs text-indigo-900 font-medium">
+                  Label bought — this order is in packing. The customer hasn&apos;t been told it
+                  shipped yet. Once it&apos;s actually handed to the carrier, mark it shipped below
+                  to send that email.
+                </p>
+                <button
+                  onClick={markShipped}
+                  disabled={shipping}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#10100F] hover:bg-neutral-800 text-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {shipping ? 'Marking as shipped…' : 'Mark as Shipped'}
+                </button>
+              </div>
             )}
 
             {status && (

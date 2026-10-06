@@ -35,10 +35,11 @@ public class AdminOrderController {
     }
 
     /** Cancels an order that hasn't shipped yet: refunds the Stripe payment in full and restocks the
-     * items. There's no generic "set any status" endpoint anymore -- PAID and SHIPPED only ever happen
-     * as side effects of a real event (the Stripe webhook, buying a shipping label), and refunds after
-     * shipment go through the returns flow instead, so cancellation is the only status change an admin
-     * should be triggering directly. */
+     * items. There's no generic "set any status" endpoint -- every other transition is either a side
+     * effect of a real event (PAID off the Stripe webhook, DELIVERED off Shippo's tracking webhook) or
+     * its own narrow, explicit action (LABEL_PURCHASED/SHIPPED -- see AdminShipmentController), and
+     * refunds after shipment go through the returns flow instead. Cancellation is the only status
+     * change this controller exposes directly. */
     @PostMapping("/{id}/cancel")
     public OrderResponse cancel(@PathVariable UUID id, @RequestBody(required = false) CancelOrderRequest request) {
         String reason = request != null ? request.reason() : null;

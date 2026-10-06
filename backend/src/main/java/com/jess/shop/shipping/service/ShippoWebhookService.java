@@ -17,10 +17,9 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 
-/** Closes the loop Shippo's label-buying leaves open: buying a label flips an order to SHIPPED the
- * instant you buy it (that's a statement about fulfillment, not about where the package physically is --
- * see ShipmentService.buyLabel), but nothing previously told this shop when the carrier actually delivered
- * it. This is that signal, arriving as Shippo's track_updated webhook. */
+/** Closes the loop that buying a label and marking an order SHIPPED (see ShipmentService) leaves
+ * open: nothing else tells this shop when the carrier actually delivered the package. This is that
+ * signal, arriving as Shippo's track_updated webhook. */
 @Service
 public class ShippoWebhookService {
 

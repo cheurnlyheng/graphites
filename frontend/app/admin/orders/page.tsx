@@ -12,6 +12,7 @@ const STATUS_FILTERS = [
   { label: 'All Orders', value: '' },
   { label: 'Needs Fulfillment (Paid)', value: 'PAID' },
   { label: 'Pending Payment', value: 'PENDING' },
+  { label: 'Packing (Label Bought)', value: 'LABEL_PURCHASED' },
   { label: 'Shipped', value: 'SHIPPED' },
   { label: 'Delivered', value: 'DELIVERED' },
   { label: 'Cancelled', value: 'CANCELLED' }

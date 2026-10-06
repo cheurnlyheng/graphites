@@ -34,4 +34,11 @@ public class AdminShipmentController {
     public ShipmentDto buyLabel(@PathVariable UUID orderId, @Valid @RequestBody BuyLabelRequest request) {
         return shipmentService.buyLabel(orderId, request);
     }
+
+    /** The "handed to the carrier" step -- separate from buying the label, which only starts packing.
+     * This is what actually sends the customer their shipping-confirmation email. */
+    @PostMapping("/ship")
+    public ShipmentDto markShipped(@PathVariable UUID orderId) {
+        return shipmentService.markShipped(orderId);
+    }
 }

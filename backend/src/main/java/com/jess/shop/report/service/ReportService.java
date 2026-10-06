@@ -25,7 +25,8 @@ public class ReportService {
 
     /** What counts as "earned" for a report: payment went through, whatever happened after. A CANCELLED
      * order is excluded even if it was briefly PAID, since cancelling one refunds it -- see OrderService.cancel. */
-    private static final List<OrderStatus> REVENUE_STATUSES = List.of(OrderStatus.PAID, OrderStatus.SHIPPED, OrderStatus.DELIVERED);
+    private static final List<OrderStatus> REVENUE_STATUSES =
+        List.of(OrderStatus.PAID, OrderStatus.LABEL_PURCHASED, OrderStatus.SHIPPED, OrderStatus.DELIVERED);
     private static final int TOP_PRODUCTS_LIMIT = 10;
 
     private final OrderRepository orderRepository;

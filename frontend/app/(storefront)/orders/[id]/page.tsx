@@ -354,7 +354,7 @@ export default function OrderDetailPage() {
                   </p>
                 )}
                 <p className="text-[11px] text-[#10100F]/60 leading-tight">
-                  {order.carrier ? `Via ${order.carrier}` : 'Assigned to courier'}
+                  {isShipped && order.carrier ? `Via ${order.carrier}` : 'Assigned to courier'}
                 </p>
               </div>
             </div>

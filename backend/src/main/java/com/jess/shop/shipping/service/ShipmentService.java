@@ -126,7 +126,9 @@ public class ShipmentService {
     }
 
     /** Buying a label spends money, so the order row is locked for the whole purchase: a double-clicked button (or two
-     * admins) makes the second request wait, find the order already SHIPPED, and stop -- instead of buying twice. */
+     * admins) makes the second request wait, find the order already past PAID, and stop -- instead of buying twice.
+     * This only ever moves the order to LABEL_PURCHASED (packing has started) -- it does NOT mean the carrier has the
+     * package yet, so no shipping-confirmation email goes out here. See markShipped for that. */
     @Transactional
     public ShipmentDto buyLabel(UUID orderId, BuyLabelRequest request) {
         Order order = orderRepository.findAndLockById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
@@ -151,16 +153,40 @@ public class ShipmentService {
             .labelUrl(transaction.labelUrl())
             .trackingUrl(transaction.trackingUrlProvider())
             .returnLabel(request.returnLabel())
-            .shippedAt(request.returnLabel() ? null : Instant.now())
             .build();
         shipment = shipmentRepository.save(shipment);
 
         if (!request.returnLabel()) {
-            order.setStatus(OrderStatus.SHIPPED);
+            order.setStatus(OrderStatus.LABEL_PURCHASED);
             orderRepository.save(order);
-            emailService.sendShippingConfirmation(order.getEmail(), order.getId(), shipment.getCarrier(),
-                shipment.getTrackingNumber(), shipment.getTrackingUrl());
         }
+
+        return new ShipmentDto(shipment.getId(), orderId, shipment.getCarrier(), shipment.getTrackingNumber(),
+            shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt());
+    }
+
+    /** The actual "handed to the carrier" moment -- separate from buying the label, which just means packing has
+     * started (see buyLabel). This is the only place the shipping-confirmation email goes out. */
+    @Transactional
+    public ShipmentDto markShipped(UUID orderId) {
+        Order order = orderRepository.findAndLockById(orderId).orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+        if (order.getStatus() != OrderStatus.LABEL_PURCHASED) {
+            throw new IllegalStateException(switch (order.getStatus()) {
+                case SHIPPED, DELIVERED -> "This order has already been marked as shipped.";
+                case CANCELLED -> "This order was cancelled.";
+                default -> "Buy a shipping label for this order before marking it as shipped.";
+            });
+        }
+
+        Shipment shipment = shipmentRepository.findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(orderId)
+            .orElseThrow(() -> new IllegalStateException("No shipping label found for this order."));
+        shipment.setShippedAt(Instant.now());
+        shipment = shipmentRepository.save(shipment);
+
+        order.setStatus(OrderStatus.SHIPPED);
+        orderRepository.save(order);
+        emailService.sendShippingConfirmation(order.getEmail(), order.getId(), shipment.getCarrier(),
+            shipment.getTrackingNumber(), shipment.getTrackingUrl());
 
         return new ShipmentDto(shipment.getId(), orderId, shipment.getCarrier(), shipment.getTrackingNumber(),
             shipment.getLabelUrl(), shipment.getTrackingUrl(), shipment.isReturnLabel(), shipment.getShippedAt());
@@ -174,7 +200,7 @@ public class ShipmentService {
                 }
             }
             case PENDING -> throw new IllegalStateException("This order isn't paid yet -- a label can only be bought once payment is confirmed");
-            case SHIPPED, DELIVERED -> {
+            case LABEL_PURCHASED, SHIPPED, DELIVERED -> {
                 String tracking = shipmentRepository.findFirstByOrderIdAndReturnLabelFalseOrderByShippedAtDesc(order.getId())
                     .map(Shipment::getTrackingNumber).orElse(null);
                 throw new IllegalStateException("A label has already been bought for this order" + (tracking != null ? " (tracking " + tracking + ")" : ""));
