@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCart } from './cart/CartContext';
@@ -8,7 +8,7 @@ import { SearchModal } from './SearchModal';
 import { CategoryMegaMenu } from './CategoryMegaMenu';
 import { apiFetch } from '@/lib/api';
 import { featuredLinks, type FeaturedLink } from '@/lib/home-anchors';
-import { getLastOrderId } from '@/lib/orders';
+import { getRecentOrderIds } from '@/lib/orders';
 import type { HomeSectionResponse } from '@/lib/types';
 
 export function Header() {
@@ -17,14 +17,29 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [featured, setFeatured] = useState<FeaturedLink[]>([]);
-  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [recentOrderIds, setRecentOrderIds] = useState<string[]>([]);
+  const [showOrdersMenu, setShowOrdersMenu] = useState(false);
+  const ordersMenuRef = useRef<HTMLDivElement>(null);
 
   // Re-checked on every navigation (not just on mount) -- the header stays mounted across route
   // changes, so this is what picks up a brand-new order id right after the order page itself saves
   // it, without needing a full page reload.
   useEffect(() => {
-    setLastOrderId(getLastOrderId());
+    setRecentOrderIds(getRecentOrderIds());
   }, [pathname]);
+
+  // Closes the "recent orders" dropdown on an outside click -- the pill itself toggles it, so this
+  // only needs to watch for clicks that land outside the whole menu+trigger container.
+  useEffect(() => {
+    if (!showOrdersMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (ordersMenuRef.current && !ordersMenuRef.current.contains(e.target as Node)) {
+        setShowOrdersMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showOrdersMenu]);
 
   useEffect(() => {
     let isMounted = true;
@@ -116,19 +131,15 @@ export function Header() {
             <span className="hidden xs:inline sm:inline">SEARCH</span>
           </button>
 
-          {/* Order Button Pill -- only shown once there's an order to actually link to */}
-          {lastOrderId && (
+          {/* Order Button Pill -- only shown once there's at least one order to link to. A single
+              remembered order links straight there; more than one opens a dropdown, since a guest
+              with several orders could otherwise only ever reach whichever one they viewed last. */}
+          {recentOrderIds.length === 1 && (
             <Link
-              href={`/orders/${lastOrderId}`}
+              href={`/orders/${recentOrderIds[0]}`}
               className="inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3.5 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="w-3.5 h-3.5"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -137,6 +148,38 @@ export function Header() {
               </svg>
               <span className="hidden sm:inline">ORDER</span>
             </Link>
+          )}
+
+          {recentOrderIds.length > 1 && (
+            <div className="relative" ref={ordersMenuRef}>
+              <button
+                onClick={() => setShowOrdersMenu((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3.5 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">ORDERS</span>
+              </button>
+              {showOrdersMenu && (
+                <div className="absolute right-0 mt-2 w-52 rounded-xl border border-black/5 bg-white shadow-float overflow-hidden z-50">
+                  {recentOrderIds.map((id) => (
+                    <Link
+                      key={id}
+                      href={`/orders/${id}`}
+                      onClick={() => setShowOrdersMenu(false)}
+                      className="block px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-[#10100F]/80 hover:bg-black/5 border-b border-black/5 last:border-0 transition-colors"
+                    >
+                      Order #{id.slice(0, 8).toUpperCase()}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Cart Button Pill */}
