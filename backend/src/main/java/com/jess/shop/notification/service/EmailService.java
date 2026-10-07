@@ -319,6 +319,10 @@ public class EmailService {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
+    // Shown as the sender's display name in the recipient's inbox -- without it, mail clients fall
+    // back to showing the bare local part of the address (e.g. "orders") instead of the brand.
+    private static final String FROM_NAME = "graphites.world";
+
     private void send(String to, String subject, String html) {
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("Resend not configured -- skipping email '{}' to {}", subject, to);
@@ -331,7 +335,7 @@ public class EmailService {
         try {
             resendWebClient.post()
                 .uri("/emails")
-                .bodyValue(new SendEmailRequest(fromEmail, List.of(to), subject, html))
+                .bodyValue(new SendEmailRequest("%s <%s>".formatted(FROM_NAME, fromEmail), List.of(to), subject, html))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
