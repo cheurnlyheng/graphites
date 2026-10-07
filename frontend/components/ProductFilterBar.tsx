@@ -58,22 +58,6 @@ export function ProductFilterBar({ totalItems, currentSearch = '', categories = 
           );
         })}
       </div>
-
-      {/* Floating Center-Bottom "Filter" Pill (Iconic Rains.com element) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-        <button
-          type="button"
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          className="inline-flex items-center gap-2 rounded-full bg-[#2a2a2a] hover:bg-black text-white px-5 py-2.5 shadow-2xl text-[13px] font-medium transition-all active:scale-95"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-          </svg>
-          <span>Filter</span>
-        </button>
-      </div>
     </div>
   );
 }

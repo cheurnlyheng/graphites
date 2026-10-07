@@ -182,11 +182,12 @@ export function Header() {
             </div>
           )}
 
-          {/* Cart Button Pill */}
+          {/* Cart Button Pill -- icon-only on mobile (with a small count badge) since the full
+              "CART (n)" label alongside Search/Orders pills made this row too tight on narrow phones. */}
           <button
             onClick={openCart}
             aria-label={`Cart with ${itemCount} items`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
+            className="relative inline-flex items-center gap-1.5 rounded-full bg-white/80 hover:bg-white backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 border border-black/5 shadow-sm text-xs font-bold tracking-tight text-[#10100F] uppercase transition-all active:scale-95"
           >
             <svg
               viewBox="0 0 24 24"
@@ -201,7 +202,12 @@ export function Header() {
                 d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119.993z"
               />
             </svg>
-            <span>CART ({itemCount})</span>
+            <span className="hidden sm:inline">CART ({itemCount})</span>
+            {itemCount > 0 && (
+              <span className="sm:hidden absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#10100F] text-[9px] font-bold text-white">
+                {itemCount}
+              </span>
+            )}
           </button>
         </div>
       </header>
