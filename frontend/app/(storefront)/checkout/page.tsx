@@ -434,17 +434,18 @@ export default function CheckoutPage() {
                         </button>
                       );
                     })}
-                  <button onClick={fetchRates} disabled={fetchingRates} className="btn-ghost text-[11px] pt-1">
-                    {fetchingRates ? 'Refreshing…' : 'Refresh rates'}
-                  </button>
-
-                  <button
-                    onClick={continueToPayment}
-                    disabled={!selectedRate || submitting}
-                    className={`${PRIMARY_BUTTON} sm:w-auto mt-2`}
-                  >
-                    {submitting ? 'Loading payment…' : 'Continue to payment'}
-                  </button>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+                    <button
+                      onClick={continueToPayment}
+                      disabled={!selectedRate || submitting}
+                      className={`${PRIMARY_BUTTON} sm:w-auto`}
+                    >
+                      {submitting ? 'Loading payment…' : 'Continue to payment'}
+                    </button>
+                    <button onClick={fetchRates} disabled={fetchingRates} className="btn-ghost text-[11px] sm:ml-auto">
+                      {fetchingRates ? 'Refreshing…' : 'Refresh rates'}
+                    </button>
+                  </div>
                   {submitError && <p className="text-xs font-medium text-red-600">{submitError}</p>}
                 </div>
               ) : (
