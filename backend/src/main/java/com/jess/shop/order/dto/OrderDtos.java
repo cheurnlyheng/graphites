@@ -23,7 +23,7 @@ public class OrderDtos {
                                  Boolean shippingAddressValid, String shippingAddressValidationNote,
                                  String selectedCarrier, String selectedServiceLevel,
                                  String carrier, String trackingNumber, String trackingUrl, Instant shippedAt,
-                                 Instant deliveredAt) {}
+                                 Instant inTransitAt, Instant deliveredAt) {}
 
     /** clientSecret mounts Stripe's EmbeddedCheckout component inline on our own /checkout page --
      * see StripeCheckoutService's embedded ui_mode. */

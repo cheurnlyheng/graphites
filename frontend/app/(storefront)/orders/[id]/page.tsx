@@ -186,6 +186,7 @@ export default function OrderDetailPage() {
   const returnWindowExpired = daysSinceDelivery !== null && daysSinceDelivery > RETURN_WINDOW_DAYS;
   const canCancel = order.status === 'PAID';
   const isShipped = order.status === 'SHIPPED' || order.status === 'DELIVERED';
+  const isInTransit = order.inTransitAt != null;
   const isDelivered = order.status === 'DELIVERED';
   const isCancelled = order.status === 'CANCELLED';
 
@@ -360,11 +361,15 @@ export default function OrderDetailPage() {
                 </p>
                 {isShipped && (
                   <p className="text-[11px] font-mono text-[#10100F]/50">
-                    {formatDate(order.shippedAt) || 'In Transit'}
+                    {isInTransit ? formatDate(order.inTransitAt) : formatDate(order.shippedAt) || 'Preparing for pickup'}
                   </p>
                 )}
                 <p className="text-[11px] text-[#10100F]/60 leading-tight">
-                  {isShipped && order.carrier ? `Via ${order.carrier}` : 'Assigned to courier'}
+                  {isShipped && order.carrier
+                    ? isInTransit
+                      ? `Picked up by ${order.carrier} -- on its way`
+                      : `Label created -- awaiting ${order.carrier} pickup`
+                    : 'Assigned to courier'}
                 </p>
               </div>
             </div>

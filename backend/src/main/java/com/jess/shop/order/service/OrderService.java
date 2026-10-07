@@ -307,10 +307,11 @@ public class OrderService {
         String trackingNumber = shipment != null ? shipment.getTrackingNumber() : null;
         String trackingUrl = shipment != null ? shipment.getTrackingUrl() : null;
         Instant shippedAt = shipment != null ? shipment.getShippedAt() : null;
+        Instant inTransitAt = shipment != null ? shipment.getInTransitAt() : null;
         Instant deliveredAt = shipment != null ? shipment.getDeliveredAt() : null;
         return new OrderResponse(order.getId(), order.getEmail(), order.getStatus(), order.getSubtotal(), order.getTaxAmount(),
             order.getShippingAmount(), order.getTotal(), order.getCurrency(), order.getCreatedAt(), order.getPaidAt(), items,
             addressValid, addressNote, order.getSelectedCarrier(), order.getSelectedServiceLevel(),
-            carrier, trackingNumber, trackingUrl, shippedAt, deliveredAt);
+            carrier, trackingNumber, trackingUrl, shippedAt, inTransitAt, deliveredAt);
     }
 }

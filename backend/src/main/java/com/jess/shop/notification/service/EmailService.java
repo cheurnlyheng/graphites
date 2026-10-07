@@ -109,6 +109,26 @@ public class EmailService {
         send(orderNotificationEmail, "New order -- $" + total, html);
     }
 
+    /** Fired the first time Shippo's tracking webhook reports a TRANSIT scan (see
+     * ShippoWebhookService) -- distinct from sendShippingConfirmation, which fires when an admin
+     * marks the order shipped, possibly before the carrier has actually picked it up. */
+    public void sendInTransitUpdate(String toEmail, UUID orderId, String carrier, String trackingUrl) {
+        String orderUrl = frontendBaseUrl + "/orders/" + orderId;
+        String trackingLine = (trackingUrl != null && !trackingUrl.isBlank())
+            ? "<p><a href=\"%s\" style=\"display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;\">Track package</a></p>".formatted(trackingUrl)
+            : "";
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your package is on its way</h2>
+              <p>%s has picked up your package and it's now moving toward you.</p>
+              %s
+              <p><a href="%s">View order details</a></p>
+              <p style="color:#888;font-size:13px;">Order reference: %s</p>
+            </div>
+            """.formatted(escapeHtml(carrier), trackingLine, orderUrl, orderId);
+        send(toEmail, "Your package is on its way", html);
+    }
+
     public void sendShippingConfirmation(String toEmail, UUID orderId, String carrier, String trackingNumber, String trackingUrl) {
         String orderUrl = frontendBaseUrl + "/orders/" + orderId;
         String trackingLine = (trackingUrl != null && !trackingUrl.isBlank())
@@ -123,6 +143,22 @@ public class EmailService {
             </div>
             """.formatted(trackingNumber, trackingLine, orderUrl);
         send(toEmail, "Your order has shipped", html);
+    }
+
+    /** Fired once Shippo's tracking webhook reports DELIVERED (see ShippoWebhookService) -- the order
+     * confirmation and shipping emails never told the customer the story actually ended. */
+    public void sendDeliveryConfirmation(String toEmail, UUID orderId) {
+        String orderUrl = frontendBaseUrl + "/orders/" + orderId;
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your order has been delivered!</h2>
+              <p>Your package has arrived. We hope you love it.</p>
+              <p>Something wrong with an item, or need to send it back? You have 30 days from today to request a return.</p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">View order &amp; start a return</a></p>
+              <p style="color:#888;font-size:13px;">Order reference: %s</p>
+            </div>
+            """.formatted(orderUrl, orderId);
+        send(toEmail, "Your order has been delivered", html);
     }
 
     public void sendOrderCancellation(String toEmail, UUID orderId, BigDecimal refundAmount, String reason) {
@@ -198,6 +234,39 @@ public class EmailService {
         send(toEmail, "Your return label is ready", html);
     }
 
+    /** Fired the moment an admin approves a return (see ReturnService.approve) -- before any label is
+     * bought or anything is physically sent back, so the customer isn't left wondering whether their
+     * request is even being looked at. shopFault was also decided at this step, so it's explained here
+     * rather than making the customer wait until the final refund email to find out who pays shipping. */
+    public void sendReturnApproved(String toEmail, UUID returnId, boolean shopFault) {
+        String note = shopFault
+            ? "Since this was our mistake, we'll cover the cost of return shipping."
+            : "Return shipping for this request is at your own cost -- it'll be deducted from your refund.";
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Your return has been approved</h2>
+              <p>We'll email you a prepaid return shipping label shortly. Once we receive and inspect the item, we'll process your refund.</p>
+              <p style="color:#888;font-size:13px;">%s</p>
+              <p style="color:#888;font-size:13px;">Return reference: %s</p>
+            </div>
+            """.formatted(note, returnId);
+        send(toEmail, "Your return has been approved", html);
+    }
+
+    /** Fired when an admin marks a return RECEIVED (see ReturnService.markReceived) -- the gap between
+     * this and the refund itself can take a day or two for inspection, so this tells the customer their
+     * package actually arrived instead of leaving them guessing. */
+    public void sendReturnReceived(String toEmail, UUID returnId) {
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>We've received your return</h2>
+              <p>Your returned item has arrived and is being inspected. We'll email you as soon as your refund has been processed.</p>
+              <p style="color:#888;font-size:13px;">Return reference: %s</p>
+            </div>
+            """.formatted(returnId);
+        send(toEmail, "We've received your return", html);
+    }
+
     /** note is an optional admin-typed explanation -- same pattern as sendOrderCancellation's reasonLine. */
     public void sendReturnRejected(String toEmail, UUID returnId, String note) {
         String noteLine = (note != null && !note.isBlank()) ? "<p>%s</p>".formatted(escapeHtml(note)) : "";
@@ -212,21 +281,36 @@ public class EmailService {
         send(toEmail, "Update on your return request", html);
     }
 
+    /** One returned line item, for the itemized breakdown in sendReturnRefunded -- quantity/lineTotal
+     * reflect what was actually claimed back, not the full original order line (a return can be for
+     * fewer units than were originally purchased). */
+    public record RefundedItem(String productName, int quantity, BigDecimal lineTotal) {}
+
     /** labelDeducted is only ever non-zero on a customer-fault return (see ReturnService.refund) --
-     * called out explicitly so the refund total doesn't look like a mistake. */
-    public void sendReturnRefunded(String toEmail, UUID returnId, BigDecimal refundAmount, BigDecimal labelDeducted) {
+     * called out explicitly so the refund total doesn't look like a mistake. partial is true whenever
+     * this return didn't cover the order's entire original total, so the subject/heading doesn't read
+     * as "fully refunded" when only part of the order was returned. */
+    public void sendReturnRefunded(String toEmail, UUID returnId, List<RefundedItem> items,
+                                    BigDecimal refundAmount, BigDecimal labelDeducted, boolean partial) {
+        String itemRows = items.stream().map(i -> """
+            <tr><td style="padding:2px 0;">%s &times;%d</td><td style="text-align:right;padding:2px 0;">$%s</td></tr>
+            """.formatted(escapeHtml(i.productName()), i.quantity(), i.lineTotal())).collect(Collectors.joining());
         String deductionLine = (labelDeducted != null && labelDeducted.compareTo(BigDecimal.ZERO) > 0)
             ? "<p style=\"color:#888;font-size:13px;\">Return shipping ($%s) was deducted from this refund.</p>".formatted(labelDeducted)
             : "";
+        String heading = partial ? "Your partial refund has been issued" : "Your refund has been issued";
         String html = """
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-              <h2>Your refund has been issued</h2>
-              <p><strong>$%s</strong> has been refunded to your original payment method.</p>
+              <h2>%s</h2>
+              <p><strong>$%s</strong> has been refunded to your original payment method for:</p>
+              <table style="width:100%%;border-collapse:collapse;margin-top:8px;font-size:14px;color:#444;">
+                %s
+              </table>
               %s
               <p style="color:#888;font-size:13px;">Return reference: %s</p>
             </div>
-            """.formatted(refundAmount, deductionLine, returnId);
-        send(toEmail, "Your refund has been issued", html);
+            """.formatted(heading, refundAmount, itemRows, deductionLine, returnId);
+        send(toEmail, heading, html);
     }
 
     /** The cancellation reason is free text an admin typed, dropped straight into an HTML email -- escaped

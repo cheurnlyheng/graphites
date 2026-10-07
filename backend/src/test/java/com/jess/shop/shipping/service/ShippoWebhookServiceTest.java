@@ -1,5 +1,6 @@
 package com.jess.shop.shipping.service;
 
+import com.jess.shop.notification.service.EmailService;
 import com.jess.shop.order.entity.Order;
 import com.jess.shop.order.entity.OrderStatus;
 import com.jess.shop.order.repository.OrderRepository;
@@ -32,12 +33,13 @@ class ShippoWebhookServiceTest {
 
     @Mock private ShipmentRepository shipmentRepository;
     @Mock private OrderRepository orderRepository;
+    @Mock private EmailService emailService;
 
     private ShippoWebhookService service;
 
     @BeforeEach
     void setUp() {
-        service = new ShippoWebhookService(shipmentRepository, orderRepository);
+        service = new ShippoWebhookService(shipmentRepository, orderRepository, emailService);
         ReflectionTestUtils.setField(service, "webhookToken", "correct-token");
     }
 
@@ -63,10 +65,10 @@ class ShippoWebhookServiceTest {
     }
 
     @Test
-    void ignoresNonDeliveredStatuses() {
-        service.handle("correct-token", payload("TRANSIT", "1Z999"));
+    void ignoresStatusesThisShopDoesNotModel() {
+        service.handle("correct-token", payload("PRE_TRANSIT", "1Z999"));
 
-        verifyNoInteractions(shipmentRepository, orderRepository);
+        verifyNoInteractions(shipmentRepository, orderRepository, emailService);
     }
 
     @Test
@@ -123,7 +125,7 @@ class ShippoWebhookServiceTest {
     void flipsOrderFromShippedToDeliveredOnFirstDeliveryEvent() {
         UUID orderId = UUID.randomUUID();
         Shipment shipment = Shipment.builder().orderId(orderId).trackingNumber("1Z999").build();
-        Order order = Order.builder().id(orderId).status(OrderStatus.SHIPPED).build();
+        Order order = Order.builder().id(orderId).email("buyer@example.com").status(OrderStatus.SHIPPED).build();
         when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(shipment));
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
@@ -133,6 +135,35 @@ class ShippoWebhookServiceTest {
         verify(shipmentRepository).save(shipment);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         verify(orderRepository).save(order);
+        verify(emailService).sendDeliveryConfirmation("buyer@example.com", orderId);
+    }
+
+    @Test
+    void recordsFirstTransitScanAndEmailsCustomerWithoutTouchingOrderStatus() {
+        UUID orderId = UUID.randomUUID();
+        Shipment shipment = Shipment.builder().orderId(orderId).trackingNumber("1Z999").carrier("UPS").trackingUrl("https://track.example/1Z999").build();
+        Order order = Order.builder().id(orderId).email("buyer@example.com").status(OrderStatus.SHIPPED).build();
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(shipment));
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        service.handle("correct-token", payload("TRANSIT", "1Z999"));
+
+        assertThat(shipment.getInTransitAt()).isNotNull();
+        verify(shipmentRepository).save(shipment);
+        verify(orderRepository, never()).save(any());
+        verify(emailService).sendInTransitUpdate("buyer@example.com", orderId, "UPS", "https://track.example/1Z999");
+    }
+
+    @Test
+    void ignoresRepeatTransitScansForAShipmentAlreadyMarkedInTransit() {
+        Shipment shipment = Shipment.builder().orderId(UUID.randomUUID()).trackingNumber("1Z999")
+            .inTransitAt(java.time.Instant.parse("2025-12-30T00:00:00Z")).build();
+        when(shipmentRepository.findAllByTrackingNumber("1Z999")).thenReturn(List.of(shipment));
+
+        service.handle("correct-token", payload("TRANSIT", "1Z999"));
+
+        verify(shipmentRepository, never()).save(any());
+        verifyNoInteractions(orderRepository, emailService);
     }
 
     @Test

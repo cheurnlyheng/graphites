@@ -167,6 +167,7 @@ export interface OrderResponse {
   trackingNumber: string | null;
   trackingUrl: string | null;
   shippedAt: string | null;
+  inTransitAt: string | null;
   deliveredAt: string | null;
 }
 

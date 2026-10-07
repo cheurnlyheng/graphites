@@ -64,6 +64,12 @@ public class Shipment {
     @Column(name = "estimated_delivery")
     private Instant estimatedDelivery;
 
+    /** First TRANSIT scan Shippo's tracking webhook reports for this shipment -- see
+     * ShippoWebhookService. Distinct from shippedAt (which just means an admin bought the label and
+     * marked it shipped): this is the carrier actually confirming the package is moving. */
+    @Column(name = "in_transit_at")
+    private Instant inTransitAt;
+
     @Column(name = "delivered_at")
     private Instant deliveredAt;
 

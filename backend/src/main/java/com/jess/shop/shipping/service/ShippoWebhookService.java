@@ -1,5 +1,6 @@
 package com.jess.shop.shipping.service;
 
+import com.jess.shop.notification.service.EmailService;
 import com.jess.shop.order.entity.Order;
 import com.jess.shop.order.entity.OrderStatus;
 import com.jess.shop.order.repository.OrderRepository;
@@ -19,8 +20,9 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /** Closes the loop that buying a label and marking an order SHIPPED (see ShipmentService) leaves
- * open: nothing else tells this shop when the carrier actually delivered the package. This is that
- * signal, arriving as Shippo's track_updated webhook. */
+ * open: nothing else tells this shop when the carrier actually picked the package up or delivered
+ * it. This is that signal, arriving as Shippo's track_updated webhook -- reacts to TRANSIT (first
+ * carrier scan) and DELIVERED, and emails the customer on both. */
 @Service
 public class ShippoWebhookService {
 
@@ -28,13 +30,15 @@ public class ShippoWebhookService {
 
     private final ShipmentRepository shipmentRepository;
     private final OrderRepository orderRepository;
+    private final EmailService emailService;
 
     @Value("${shippo.webhook-token}")
     private String webhookToken;
 
-    public ShippoWebhookService(ShipmentRepository shipmentRepository, OrderRepository orderRepository) {
+    public ShippoWebhookService(ShipmentRepository shipmentRepository, OrderRepository orderRepository, EmailService emailService) {
         this.shipmentRepository = shipmentRepository;
         this.orderRepository = orderRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -47,22 +51,25 @@ public class ShippoWebhookService {
             ? payload.data().trackingStatus().status() : null;
         String trackingNumber = payload.data() != null ? payload.data().trackingNumber() : null;
 
-        // PRE_TRANSIT, TRANSIT, RETURNED and FAILURE all arrive on this same webhook, but nothing in this
-        // shop reacts to them yet -- DELIVERED is the one status this project's order journey currently models.
-        if (!"DELIVERED".equalsIgnoreCase(status) || trackingNumber == null) {
+        boolean isDelivered = "DELIVERED".equalsIgnoreCase(status);
+        boolean isTransit = "TRANSIT".equalsIgnoreCase(status);
+        // PRE_TRANSIT, RETURNED and FAILURE still arrive on this same webhook, but nothing in this
+        // shop reacts to them -- TRANSIT (first carrier scan) and DELIVERED are the two statuses this
+        // project's order journey models.
+        if ((!isDelivered && !isTransit) || trackingNumber == null) {
             log.debug("Ignoring Shippo tracking update: status={}, trackingNumber={}", status, trackingNumber);
             return;
         }
 
         // A return label's own movement isn't the customer's forward shipment, and a shipment already
-        // marked delivered means this is a duplicate delivery of the same webhook event -- both are
-        // filtered out here rather than only matched against a single row, since real carriers issue
+        // marked delivered means this is a duplicate/late event for an already-closed shipment -- both
+        // are filtered out here rather than only matched against a single row, since real carriers issue
         // unique tracking numbers but Shippo's own test/sandbox carriers don't (see ShipmentRepository).
         List<Shipment> candidates = shipmentRepository.findAllByTrackingNumber(trackingNumber).stream()
             .filter(s -> !s.isReturnLabel() && s.getDeliveredAt() == null)
             .toList();
         if (candidates.isEmpty()) {
-            log.warn("Shippo reported DELIVERED for a tracking number this shop doesn't recognize (or it's already resolved): {}", trackingNumber);
+            log.warn("Shippo reported {} for a tracking number this shop doesn't recognize (or it's already resolved): {}", status, trackingNumber);
             return;
         }
         if (candidates.size() > 1) {
@@ -74,6 +81,20 @@ public class ShippoWebhookService {
         }
 
         Shipment shipment = candidates.get(0);
+
+        if (isTransit) {
+            if (shipment.getInTransitAt() != null) {
+                return; // already recorded -- carriers can report TRANSIT more than once, no DB lookups needed
+            }
+            shipment.setInTransitAt(parseStatusDate(payload.data().trackingStatus().statusDate()));
+            shipmentRepository.save(shipment);
+            Order order = orderRepository.findById(shipment.getOrderId()).orElse(null);
+            if (order != null && order.getStatus() == OrderStatus.SHIPPED) {
+                emailService.sendInTransitUpdate(order.getEmail(), order.getId(), shipment.getCarrier(), shipment.getTrackingUrl());
+            }
+            return;
+        }
+
         shipment.setDeliveredAt(parseStatusDate(payload.data().trackingStatus().statusDate()));
         shipmentRepository.save(shipment);
 
@@ -81,6 +102,7 @@ public class ShippoWebhookService {
         if (order != null && order.getStatus() == OrderStatus.SHIPPED) {
             order.setStatus(OrderStatus.DELIVERED);
             orderRepository.save(order);
+            emailService.sendDeliveryConfirmation(order.getEmail(), order.getId());
         }
     }
 
