@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -191,7 +192,13 @@ public class ReturnService {
             .orElseThrow(() -> new ResourceNotFoundException("Return request not found: " + returnRequestId));
         returnRequest.setStatus(ReturnStatus.APPROVED);
         returnRequest.setShopFault(shopFault);
-        return toResponse(returnRequestRepository.save(returnRequest));
+        returnRequest = returnRequestRepository.save(returnRequest);
+
+        Order order = orderRepository.findById(returnRequest.getOrderId()).orElse(null);
+        if (order != null) {
+            emailService.sendReturnApproved(order.getEmail(), returnRequestId, shopFault);
+        }
+        return toResponse(returnRequest);
     }
 
     /** Reachable from any status, including after approval or even after the item's been marked
@@ -253,7 +260,13 @@ public class ReturnService {
             throw new IllegalStateException("Only an approved return can be marked as received (currently " + returnRequest.getStatus() + ")");
         }
         returnRequest.setStatus(ReturnStatus.RECEIVED);
-        return toResponse(returnRequestRepository.save(returnRequest));
+        returnRequest = returnRequestRepository.save(returnRequest);
+
+        Order order = orderRepository.findById(returnRequest.getOrderId()).orElse(null);
+        if (order != null) {
+            emailService.sendReturnReceived(order.getEmail(), returnRequestId);
+        }
+        return toResponse(returnRequest);
     }
 
     /** Only reachable once the item has actually been marked RECEIVED -- refunding any earlier would
@@ -281,11 +294,14 @@ public class ReturnService {
 
         List<ReturnItem> items = returnItemRepository.findByReturnRequestId(returnRequestId);
         BigDecimal refundAmount = BigDecimal.ZERO;
+        List<EmailService.RefundedItem> refundedItems = new ArrayList<>();
 
         for (ReturnItem returnItem : items) {
             OrderItem orderItem = orderItemRepository.findById(returnItem.getOrderItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found: " + returnItem.getOrderItemId()));
-            refundAmount = refundAmount.add(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(returnItem.getQuantity())));
+            BigDecimal lineTotal = orderItem.getUnitPrice().multiply(BigDecimal.valueOf(returnItem.getQuantity()));
+            refundAmount = refundAmount.add(lineTotal);
+            refundedItems.add(new EmailService.RefundedItem(orderItem.getProductNameSnapshot(), returnItem.getQuantity(), lineTotal));
 
             if (request.restock() && orderItem.getProductVariantId() != null) {
                 variantRepository.incrementStock(orderItem.getProductVariantId(), returnItem.getQuantity());
@@ -317,7 +333,11 @@ public class ReturnService {
         returnRequest.setStatus(ReturnStatus.REFUNDED);
         returnRequest.setResolvedAt(Instant.now());
         ReturnRequest saved = returnRequestRepository.save(returnRequest);
-        emailService.sendReturnRefunded(order.getEmail(), returnRequestId, finalRefund, labelDeduction);
+        // "Partial" is about the ORDER, not this specific return -- a return that happens to claim
+        // every item on a single-item order is a full refund, but the same return on a multi-item
+        // order where other items weren't returned is still only a partial refund of that order.
+        boolean partial = refundAmount.compareTo(order.getTotal()) < 0;
+        emailService.sendReturnRefunded(order.getEmail(), returnRequestId, refundedItems, finalRefund, labelDeduction, partial);
         return toResponse(saved);
     }
 
