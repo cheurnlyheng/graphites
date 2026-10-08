@@ -51,14 +51,11 @@ export default async function ProductsPage({
           <p className="mt-1 text-xs text-ink/50">
             {resolvedSearchParams.search
               ? `No items match the query "${resolvedSearchParams.search}".`
-              : 'Add some products from the admin panel to populate the catalog.'}
+              : 'New arrivals are on the way -- check back soon.'}
           </p>
           <div className="mt-6 flex gap-4">
             <Link href="/products" className="btn-secondary text-xs">
               Clear Filters
-            </Link>
-            <Link href="/admin/products/new" className="btn-primary text-xs">
-              Add Product (Admin)
             </Link>
           </div>
         </div>

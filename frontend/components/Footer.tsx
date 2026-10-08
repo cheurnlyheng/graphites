@@ -144,7 +144,7 @@ export function Footer() {
       <div className="py-16 px-4 sm:px-8 lg:px-12">
         <div className="max-w-[1700px] mx-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-10">
           {/* Brand Info */}
-          <div className="col-span-2 md:col-span-4 lg:col-span-4 space-y-6">
+          <div className="col-span-2 md:col-span-4 lg:col-span-5 space-y-6">
             <Link href="/" className="inline-flex items-center gap-3 group">
               <span className="inline-flex items-center justify-center rounded-full bg-white px-4 py-1.5 text-xs font-black tracking-[0.2em] text-[#10100F] uppercase shadow-sm group-hover:bg-neutral-200 transition-colors">
                 GRAPHITES
@@ -166,7 +166,7 @@ export function Footer() {
           </div>
 
           {/* Column: Catalog */}
-          <div className="col-span-1 md:col-span-2 lg:col-span-2 space-y-4">
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">
               Collections
             </h4>
@@ -195,7 +195,7 @@ export function Footer() {
           </div>
 
           {/* Column: Client Care */}
-          <div className="col-span-1 md:col-span-2 lg:col-span-3 space-y-4">
+          <div className="col-span-1 md:col-span-2 lg:col-span-4 space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">
               Customer Care
             </h4>
@@ -219,21 +219,6 @@ export function Footer() {
                 <a href="mailto:graphites.world@gmail.com" className="hover:text-white transition-colors block">
                   Contact Support
                 </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column: About */}
-          <div className="col-span-2 md:col-span-4 lg:col-span-3 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white">
-              About
-            </h4>
-            <ul className="space-y-2.5 text-xs text-white/60">
-              <li>
-                <Link href="/admin" className="hover:text-white transition-colors inline-flex items-center gap-1.5 font-bold text-white/80">
-                  <span>Operations Console</span>
-                  <span className="text-[10px]">↗</span>
-                </Link>
               </li>
             </ul>
           </div>
