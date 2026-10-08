@@ -193,8 +193,8 @@ export default function OrderDetailPage() {
   // Compute step states for the milestone tracker
   const step1State: MilestoneState = 'done';
   const step2State: MilestoneState = isShipped || isDelivered ? 'done' : isCancelled ? 'upcoming' : 'current';
-  const step3State: MilestoneState = isDelivered ? 'done' : isShipped ? 'current' : 'upcoming';
-  const step4State: MilestoneState = isDelivered ? 'done' : 'upcoming';
+  const step3State: MilestoneState = isDelivered || isInTransit ? 'done' : isShipped ? 'current' : 'upcoming';
+  const step4State: MilestoneState = isDelivered ? 'done' : isInTransit ? 'current' : 'upcoming';
 
   return (
     <div className={containerClass}>
@@ -223,7 +223,7 @@ export default function OrderDetailPage() {
       {/* Order Header Banner */}
       <div className="border-b border-[#e5ded2] pb-8 mb-10">
         <div className="flex flex-wrap items-center gap-3 mb-3">
-          <StatusBadge status={order.status} />
+          <StatusBadge status={isInTransit && !isDelivered ? 'IN_TRANSIT' : order.status} />
           <span className="text-xs font-mono font-medium text-[#10100F]/50">
             Ordered {formatDate(order.createdAt)}
           </span>
@@ -381,10 +381,18 @@ export default function OrderDetailPage() {
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                     step4State === 'done'
                       ? 'bg-emerald-600 text-white'
+                      : step4State === 'current'
+                      ? 'border-2 border-[#10100F] bg-white text-[#10100F]'
                       : 'border-2 border-black/15 text-black/30'
                   }`}
                 >
-                  {step4State === 'done' ? '✓' : '4'}
+                  {step4State === 'done' ? (
+                    '✓'
+                  ) : step4State === 'current' ? (
+                    <span className="w-2 h-2 rounded-full bg-[#10100F] animate-ping" />
+                  ) : (
+                    '4'
+                  )}
                 </div>
               </div>
               <div className="space-y-1">
@@ -534,9 +542,9 @@ export default function OrderDetailPage() {
                   <button
                     onClick={() => setShowCancelForm(true)}
                     type="button"
-                    className="inline-flex items-center justify-center rounded-lg border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
+                    className="text-xs font-bold uppercase tracking-wider text-[#10100F] underline underline-offset-2 decoration-[#10100F]/40 hover:decoration-[#10100F] transition-colors shrink-0"
                   >
-                    Cancel My Order
+                    Cancel my order
                   </button>
                 </div>
               ) : (
@@ -617,9 +625,9 @@ export default function OrderDetailPage() {
                   <button
                     onClick={() => setShowReturnForm(true)}
                     type="button"
-                    className="inline-flex items-center justify-center rounded-lg border border-black/20 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#10100F] hover:bg-black hover:text-white transition-all active:scale-95 shrink-0"
+                    className="text-xs font-bold uppercase tracking-wider text-[#10100F] underline underline-offset-2 decoration-[#10100F]/40 hover:decoration-[#10100F] transition-colors shrink-0"
                   >
-                    Request a Return
+                    Request a return
                   </button>
                 </div>
               ) : (
@@ -746,7 +754,7 @@ export default function OrderDetailPage() {
               <h2 className="text-sm font-bold uppercase tracking-wide text-[#10100F]">
                 Receipt breakdown
               </h2>
-              <StatusBadge status={order.status} />
+              <StatusBadge status={isInTransit && !isDelivered ? 'IN_TRANSIT' : order.status} />
             </div>
 
             <div className="space-y-3 text-xs sm:text-sm">

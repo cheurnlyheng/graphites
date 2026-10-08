@@ -8,6 +8,10 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   FULFILLED: { label: 'Fulfilled', className: 'bg-blue-500/10 text-blue-800 border-blue-500/20' },
   LABEL_PURCHASED: { label: 'Packing', className: 'bg-sky-500/10 text-sky-800 border-sky-500/20' },
   SHIPPED: { label: 'Shipped', className: 'bg-indigo-500/10 text-indigo-800 border-indigo-500/20' },
+  // Display-only pseudo-status -- the order's real backend status stays SHIPPED the whole time (see
+  // OrderStatus.java); this just lets the badge reflect the carrier's own TRANSIT scan (order.inTransitAt)
+  // without widening the actual state machine for what's fundamentally a label change.
+  IN_TRANSIT: { label: 'In Transit', className: 'bg-indigo-500/10 text-indigo-800 border-indigo-500/20' },
   DELIVERED: { label: 'Delivered', className: 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20' },
   CANCELLED: { label: 'Cancelled', className: 'bg-rose-500/10 text-rose-700 border-rose-500/20' },
   REFUNDED: { label: 'Refunded', className: 'bg-zinc-500/10 text-zinc-700 border-zinc-500/20' },

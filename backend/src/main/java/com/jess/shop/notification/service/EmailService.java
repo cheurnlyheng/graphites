@@ -153,9 +153,9 @@ public class EmailService {
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
               <h2>Your order has been delivered!</h2>
               <p>Your package has arrived. We hope you love it.</p>
-              <p>Something wrong with an item, or need to send it back? You have 30 days from today to request a return.</p>
-              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">View order &amp; start a return</a></p>
+              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">View Order</a></p>
               <p style="color:#888;font-size:13px;">Order reference: %s</p>
+              <p style="color:#888;font-size:13px;">Need to make a change? Returns are accepted within 30 days of delivery.</p>
             </div>
             """.formatted(orderUrl, orderId);
         send(toEmail, "Your order has been delivered", html);
@@ -225,12 +225,12 @@ public class EmailService {
         String html = """
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
               <h2>Your return label is ready</h2>
-              <p>Print the label below, attach it to your package, and drop it off with %s.</p>
-              <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Download return label</a></p>
+              <p>Print the label below, attach it to your package, and drop it off with %s -- any %s location or dropbox works, there's no deadline, just send it back whenever's convenient.</p>
+              <p><a href="%s" style="color:#111;font-weight:bold;">Download your return label</a></p>
               <p>Tracking number: <strong>%s</strong></p>
               <p style="color:#888;font-size:13px;">Once we receive and inspect the item, we'll process your refund. Return reference: %s</p>
             </div>
-            """.formatted(escapeHtml(carrier), labelUrl, trackingNumber, returnId);
+            """.formatted(escapeHtml(carrier), escapeHtml(carrier), labelUrl, trackingNumber, returnId);
         send(toEmail, "Your return label is ready", html);
     }
 

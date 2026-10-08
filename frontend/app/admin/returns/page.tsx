@@ -6,10 +6,12 @@ import Link from 'next/link';
 import { apiFetch, mediaUrl, ApiError } from '@/lib/api';
 import { getAdminAuth, clearAdminAuth, isAdminAuthError } from '@/lib/auth';
 import { StatusBadge } from '@/components/StatusBadge';
+import { useConfirm } from '@/components/admin/ConfirmDialog';
 import type { PageResponse, ReturnResponse, ShippingRateOption } from '@/lib/types';
 
 export default function AdminReturnsPage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const [returns, setReturns] = useState<ReturnResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'REQUESTED' | 'APPROVED' | 'RECEIVED' | 'RESOLVED'>('ALL');
@@ -111,14 +113,23 @@ export default function AdminReturnsPage() {
     }
   }
 
-  async function markReceived(id: string) {
-    setActionLoading(id);
+  async function markReceived(r: ReturnResponse) {
+    if (!r.returnLabelUrl) {
+      const proceed = await confirm({
+        title: 'No return label was ever sent',
+        message: 'This return was never given a shipping label, so the customer never got an email with tracking info or drop-off instructions. Only continue if they shipped the item back on their own.',
+        confirmLabel: 'Mark as Received Anyway',
+        danger: true
+      });
+      if (!proceed) return;
+    }
+    setActionLoading(r.id);
     const auth = getAdminAuth();
     try {
-      await apiFetch(`/api/admin/returns/${id}/received`, { method: 'POST', token: auth?.token });
+      await apiFetch(`/api/admin/returns/${r.id}/received`, { method: 'POST', token: auth?.token });
       load();
     } catch (err) {
-      setMsg(id, err instanceof ApiError ? err.message : 'Could not mark this return as received.');
+      setMsg(r.id, err instanceof ApiError ? err.message : 'Could not mark this return as received.');
     } finally {
       setActionLoading(null);
     }
@@ -443,7 +454,7 @@ export default function AdminReturnsPage() {
                       )}
                       <button
                         disabled={actionLoading === r.id}
-                        onClick={() => markReceived(r.id)}
+                        onClick={() => markReceived(r)}
                         className="rounded-full border border-[#e5ded2] bg-white text-[#10100F] px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#f3f3f1] disabled:opacity-50 transition-colors shadow-2xs active:scale-95"
                       >
                         Mark as Received
