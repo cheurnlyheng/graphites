@@ -85,7 +85,7 @@ public class CartService {
     }
 
     private CartResponse toResponse(Cart cart) {
-        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        List<CartItem> items = cartItemRepository.findByCartIdOrderByCreatedAtAsc(cart.getId());
         List<CartItemResponse> itemResponses = items.stream().map(this::toItemResponse).toList();
         BigDecimal subtotal = itemResponses.stream().map(CartItemResponse::lineTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new CartResponse(cart.getId(), cart.getSessionToken(), itemResponses, subtotal);

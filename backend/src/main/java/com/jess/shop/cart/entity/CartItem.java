@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -35,4 +36,10 @@ public class CartItem {
 
     @Column(nullable = false)
     private Integer quantity;
+
+    /** When this line was first added to the cart -- what the cart is ordered by, so editing a
+     * line's quantity doesn't move it (see CartItemRepository.findByCartIdOrderByCreatedAtAsc). */
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }

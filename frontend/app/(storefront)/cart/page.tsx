@@ -5,29 +5,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { apiFetch, mediaUrl } from '@/lib/api';
-import { getCartToken, setCartToken, getStoredVariantImage } from '@/lib/cart';
-import type { CartResponse, PageResponse, ProductSummaryResponse } from '@/lib/types';
+import { getStoredVariantImage } from '@/lib/cart';
+import { useCart } from '@/components/cart/CartContext';
+import type { PageResponse, ProductSummaryResponse } from '@/lib/types';
 
 export default function CartPage() {
   const router = useRouter();
-  const [cart, setCart] = useState<CartResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Shared with the header's cart badge/drawer -- using the same context (instead of this page
+  // fetching and mutating its own separate copy of the cart) is what keeps that badge in sync the
+  // instant a quantity changes here, rather than only after a full page reload.
+  const { cart, isLoading, updateQty, removeItem } = useCart();
   const [productThumbnails, setProductThumbnails] = useState<Record<string, string>>({});
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await apiFetch<CartResponse>('/api/cart', { cartToken: getCartToken() });
-      if (data.cartToken) setCartToken(data.cartToken);
-      setCart(data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   useEffect(() => {
     if (cart?.items && cart.items.length > 0 && Object.keys(productThumbnails).length === 0) {
@@ -48,27 +36,13 @@ export default function CartPage() {
     }
   }, [cart, productThumbnails]);
 
-  async function updateQty(itemId: string, quantity: number) {
-    if (quantity <= 0) {
-      await apiFetch(`/api/cart/items/${itemId}`, { method: 'DELETE', cartToken: getCartToken() });
-    } else {
-      await apiFetch(`/api/cart/items/${itemId}`, { method: 'PATCH', body: { quantity }, cartToken: getCartToken() });
-    }
-    load();
-  }
-
-  async function removeItem(itemId: string) {
-    await apiFetch(`/api/cart/items/${itemId}`, { method: 'DELETE', cartToken: getCartToken() });
-    load();
-  }
-
   function checkout() {
     router.push('/checkout');
   }
 
   const containerClass = 'mx-auto max-w-5xl px-4 sm:px-8 pt-32 pb-24 font-sans';
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={containerClass}>
         <div className="rounded-xl border border-[#e5ded2] bg-white p-12 sm:p-16 text-center max-w-xl mx-auto shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
