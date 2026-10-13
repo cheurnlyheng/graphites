@@ -2,26 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { getAdminAuth } from '@/lib/auth';
-import type { PageResponse, ProductSummaryResponse, OrderResponse, MaintenanceStatus } from '@/lib/types';
+import type { PageResponse, ProductSummaryResponse, OrderResponse } from '@/lib/types';
 
 export default function AdminDashboard() {
   const [productCount, setProductCount] = useState<number | null>(null);
   const [orderCount, setOrderCount] = useState<number | null>(null);
-  const [maintenance, setMaintenance] = useState<MaintenanceStatus | null>(null);
-  const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [savingMaintenance, setSavingMaintenance] = useState(false);
-  const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
-
-  function loadMaintenance(token: string) {
-    apiFetch<MaintenanceStatus>('/api/admin/settings/maintenance', { token })
-      .then((res) => {
-        setMaintenance(res);
-        setMaintenanceMessage(res.message || '');
-      })
-      .catch(() => {});
-  }
 
   useEffect(() => {
     const auth = getAdminAuth();
@@ -35,71 +22,10 @@ export default function AdminDashboard() {
     apiFetch<PageResponse<OrderResponse>>('/api/admin/orders?status=PAID&size=1', { token: auth.token })
       .then((res) => setOrderCount(res.totalElements ?? res.content.length))
       .catch(() => {});
-
-    loadMaintenance(auth.token);
   }, []);
-
-  async function toggleMaintenance(enabled: boolean) {
-    setSavingMaintenance(true);
-    setMaintenanceError(null);
-    const auth = getAdminAuth();
-    try {
-      const res = await apiFetch<MaintenanceStatus>('/api/admin/settings/maintenance', {
-        method: 'PUT',
-        token: auth?.token,
-        body: { enabled, message: maintenanceMessage.trim() || null }
-      });
-      setMaintenance(res);
-    } catch (err) {
-      setMaintenanceError(err instanceof ApiError ? err.message : 'Could not update maintenance mode.');
-    } finally {
-      setSavingMaintenance(false);
-    }
-  }
 
   return (
     <div className="w-full max-w-[1700px] space-y-10 font-sans">
-      {/* Maintenance Mode */}
-      {maintenance && (
-        <div
-          className={`rounded-xl border p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 ${
-            maintenance.enabled ? 'border-rose-300 bg-rose-50/60' : 'border-[#e5ded2] bg-white'
-          }`}
-        >
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2.5">
-              <span className={`flex h-2 w-2 rounded-full ${maintenance.enabled ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#10100F]">
-                Maintenance Mode -- {maintenance.enabled ? 'Store is OFFLINE' : 'Store is live'}
-              </h3>
-            </div>
-            <p className="text-xs text-[#10100F]/60 max-w-xl">
-              {maintenance.enabled
-                ? 'Customers see a "back shortly" page and the API rejects cart/checkout/order requests. The admin dashboard still works.'
-                : 'Turning this on takes the whole storefront offline for customers -- use it for risky changes, not routine edits.'}
-            </p>
-            <input
-              value={maintenanceMessage}
-              onChange={(e) => setMaintenanceMessage(e.target.value)}
-              placeholder="Optional custom message shown to customers"
-              className="mt-1 w-full max-w-md rounded-lg border border-[#e5ded2] bg-white px-3 py-2 text-xs text-[#10100F] placeholder:text-[#10100F]/35 focus:outline-none focus:border-[#10100F]"
-            />
-            {maintenanceError && <p className="text-xs font-medium text-rose-700">{maintenanceError}</p>}
-          </div>
-          <button
-            onClick={() => toggleMaintenance(!maintenance.enabled)}
-            disabled={savingMaintenance}
-            className={`shrink-0 rounded-full px-6 py-3 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 ${
-              maintenance.enabled
-                ? 'bg-[#10100F] text-white hover:bg-neutral-800'
-                : 'bg-rose-700 text-white hover:bg-rose-800'
-            }`}
-          >
-            {savingMaintenance ? 'Saving…' : maintenance.enabled ? 'Turn Off -- Go Live' : 'Turn On Maintenance Mode'}
-          </button>
-        </div>
-      )}
-
       {/* Welcome & Quick Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-[#e5ded2] pb-6">
         <div>
