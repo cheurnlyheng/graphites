@@ -1,6 +1,7 @@
 package com.jess.shop.common.config;
 
 import com.jess.shop.common.security.JwtAuthFilter;
+import com.jess.shop.common.security.MaintenanceModeFilter;
 import com.jess.shop.common.security.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -25,13 +26,15 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final MaintenanceModeFilter maintenanceModeFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitFilter rateLimitFilter, MaintenanceModeFilter maintenanceModeFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.maintenanceModeFilter = maintenanceModeFilter;
     }
 
     @Bean
@@ -49,6 +52,9 @@ public class SecurityConfig {
                 // Stripe calls this directly -- never behind auth, verified instead by webhook signature.
                 .requestMatchers("/api/webhooks/**").permitAll()
                 .requestMatchers("/api/admin/auth/**").permitAll()
+                // The frontend's maintenance-check middleware calls this unauthenticated on every
+                // storefront request -- see SettingsController.
+                .requestMatchers(HttpMethod.GET, "/api/settings/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**", "/api/home-sections").permitAll()
                 // Admin-uploaded images (hero banner etc.) are shown on the public storefront.
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
@@ -64,7 +70,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(rateLimitFilter, JwtAuthFilter.class);
+            .addFilterBefore(rateLimitFilter, JwtAuthFilter.class)
+            .addFilterBefore(maintenanceModeFilter, RateLimitFilter.class);
 
         return http.build();
     }
