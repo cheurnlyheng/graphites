@@ -3,6 +3,7 @@ package com.jess.shop.admin.controller;
 import com.jess.shop.admin.dto.AdminAuthDtos.AuthResponse;
 import com.jess.shop.admin.dto.AdminAuthDtos.BootstrapRequest;
 import com.jess.shop.admin.dto.AdminAuthDtos.LoginRequest;
+import com.jess.shop.admin.dto.AdminAuthDtos.VerifyTwoFactorRequest;
 import com.jess.shop.admin.service.AdminAuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,5 +29,12 @@ public class AdminAuthController {
     @PostMapping("/bootstrap")
     public AuthResponse bootstrap(@Valid @RequestBody BootstrapRequest request) {
         return adminAuthService.bootstrapFirstAdmin(request.email(), request.password());
+    }
+
+    /** Second step of login when the account has 2FA on -- see AdminAuthService.verifyTwoFactor.
+     * Covered by the same rate-limit bucket as /login (RateLimitFilter matches on path prefix). */
+    @PostMapping("/login/verify-2fa")
+    public AuthResponse verifyTwoFactor(@Valid @RequestBody VerifyTwoFactorRequest request) {
+        return adminAuthService.verifyTwoFactor(request.pendingToken(), request.code());
     }
 }

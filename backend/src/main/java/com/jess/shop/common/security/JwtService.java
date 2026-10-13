@@ -35,13 +35,19 @@ public class JwtService {
     }
 
     public String generateToken(UUID subjectId, String email, String role) {
+        return generateToken(subjectId, email, role, expirationMinutes);
+    }
+
+    /** Used for the short-lived "password checked, 2FA code still owed" token between the two steps
+     * of admin login (see AdminAuthService) -- everything else uses the normal expiration above. */
+    public String generateToken(UUID subjectId, String email, String role, long customExpirationMinutes) {
         Instant now = Instant.now();
         return Jwts.builder()
             .subject(subjectId.toString())
             .claim("email", email)
             .claim("role", role)
             .issuedAt(Date.from(now))
-            .expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)))
+            .expiration(Date.from(now.plus(customExpirationMinutes, ChronoUnit.MINUTES)))
             .signWith(key)
             .compact();
     }

@@ -204,11 +204,22 @@ export interface ShipmentResponse {
 }
 
 export interface AuthResponse {
-  token: string;
+  token: string | null;
   email: string;
   firstName?: string | null;
   lastName?: string | null;
   role?: string;
+  twoFactorRequired: boolean;
+  pendingToken: string | null;
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+}
+
+export interface TwoFactorSetup {
+  secret: string;
+  uri: string;
 }
 
 export interface PageResponse<T> {

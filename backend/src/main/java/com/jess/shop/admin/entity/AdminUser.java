@@ -40,4 +40,15 @@ public class AdminUser {
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();
+
+    /** Null until setup is started (see AdminAuthService.setupTwoFactor) -- the Base32 TOTP secret
+     * scanned into an authenticator app. */
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    /** False until a code generated from totpSecret is confirmed (see confirmTwoFactor) -- a secret
+     * can exist mid-setup without this being true yet, so login only demands a code once this flips. */
+    @Column(name = "totp_enabled", nullable = false)
+    @Builder.Default
+    private boolean totpEnabled = false;
 }

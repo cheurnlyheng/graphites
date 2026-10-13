@@ -15,6 +15,22 @@ export default function AdminLoginPage() {
   const [bootstrapMode, setBootstrapMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Set once the password checks out on an account with 2FA on -- its presence is what switches
+  // the form over to asking for the authenticator code instead of email/password.
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+
+  function finishLogin(auth: AuthResponse) {
+    if (auth.twoFactorRequired && auth.pendingToken) {
+      setPendingToken(auth.pendingToken);
+      return;
+    }
+    if (auth.token) {
+      setAdminAuth({ token: auth.token, email: auth.email });
+      router.push('/admin');
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -22,8 +38,24 @@ export default function AdminLoginPage() {
     try {
       const path = bootstrapMode ? '/api/admin/auth/bootstrap' : '/api/admin/auth/login';
       const auth = await apiFetch<AuthResponse>(path, { method: 'POST', body: { email, password } });
-      setAdminAuth(auth);
-      router.push('/admin');
+      finishLogin(auth);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong -- check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitCode(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const auth = await apiFetch<AuthResponse>('/api/admin/auth/login/verify-2fa', {
+        method: 'POST',
+        body: { pendingToken, code }
+      });
+      finishLogin(auth);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong -- check your connection and try again.');
     } finally {
@@ -52,66 +84,113 @@ export default function AdminLoginPage() {
             Authentication
           </span>
           <h1 className="text-xl font-black uppercase tracking-tight text-white mt-1 font-sans">
-            {bootstrapMode ? 'Create First Admin' : 'Sign In'}
+            {pendingToken ? 'Enter Your Code' : bootstrapMode ? 'Create First Admin' : 'Sign In'}
           </h1>
         </div>
 
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-[10px] font-sans font-bold uppercase tracking-widest text-white/60 mb-1.5" htmlFor="email">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-white focus:outline-none transition-colors font-sans"
-              placeholder="admin@jess.shop"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-sans font-bold uppercase tracking-widest text-white/60 mb-1.5" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={bootstrapMode ? 8 : undefined}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-white focus:outline-none transition-colors font-sans"
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-center text-xs text-red-400 font-sans font-medium">
-              {error}
+        {pendingToken ? (
+          <form onSubmit={submitCode} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-sans font-bold uppercase tracking-widest text-white/60 mb-1.5" htmlFor="code">
+                6-digit code from your authenticator app
+              </label>
+              <input
+                id="code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                autoFocus
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-center text-lg tracking-[0.4em] text-white placeholder:text-white/30 focus:border-white focus:outline-none transition-colors font-sans"
+                placeholder="000000"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-white text-[#10100F] py-3 text-xs font-sans font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
-          >
-            {loading ? 'Authenticating…' : bootstrapMode ? 'Create Account' : 'Sign In'}
-          </button>
-        </form>
+            {error && (
+              <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-center text-xs text-red-400 font-sans font-medium">
+                {error}
+              </div>
+            )}
 
-        <div className="mt-6 pt-6 border-t border-white/10 text-center">
-          <button
-            onClick={() => setBootstrapMode((v) => !v)}
-            className="text-[11px] font-sans font-medium text-white/50 hover:text-white transition-colors"
-          >
-            {bootstrapMode
-              ? 'Already have an account? Sign in'
-              : 'First time setup? Create first admin'}
-          </button>
-        </div>
+            <button
+              type="submit"
+              disabled={loading || code.length !== 6}
+              className="w-full rounded-full bg-white text-[#10100F] py-3 text-xs font-sans font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
+            >
+              {loading ? 'Verifying…' : 'Verify'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setPendingToken(null); setCode(''); setError(null); }}
+              className="w-full text-center text-[11px] font-sans font-medium text-white/50 hover:text-white transition-colors"
+            >
+              ← Back to sign in
+            </button>
+          </form>
+        ) : (
+          <>
+            <form onSubmit={submit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-sans font-bold uppercase tracking-widest text-white/60 mb-1.5" htmlFor="email">
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-white focus:outline-none transition-colors font-sans"
+                  placeholder="admin@jess.shop"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-sans font-bold uppercase tracking-widest text-white/60 mb-1.5" htmlFor="password">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={bootstrapMode ? 8 : undefined}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-xs text-white placeholder:text-white/30 focus:border-white focus:outline-none transition-colors font-sans"
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-center text-xs text-red-400 font-sans font-medium">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-white text-[#10100F] py-3 text-xs font-sans font-bold uppercase tracking-widest hover:bg-neutral-200 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
+              >
+                {loading ? 'Authenticating…' : bootstrapMode ? 'Create Account' : 'Sign In'}
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-white/10 text-center">
+              <button
+                onClick={() => setBootstrapMode((v) => !v)}
+                className="text-[11px] font-sans font-medium text-white/50 hover:text-white transition-colors"
+              >
+                {bootstrapMode
+                  ? 'Already have an account? Sign in'
+                  : 'First time setup? Create first admin'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="text-center mt-6">
