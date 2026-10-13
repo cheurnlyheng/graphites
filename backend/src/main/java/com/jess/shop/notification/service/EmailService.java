@@ -312,6 +312,44 @@ public class EmailService {
         send(toEmail, heading, html);
     }
 
+    /** One variant that just dropped at/below its own threshold, for sendLowStockAlert's table --
+     * productId links straight to that product's edit page, where stock is actually added. */
+    public record LowStockItem(UUID productId, String productName, String sku, String variantLabel,
+                                int stockQty, int lowStockThreshold) {}
+
+    /** Fired by LowStockAlertService's hourly check, once per variant that just crossed its threshold
+     * (not re-sent every hour it stays low -- see ProductVariant.lowStockAlertSent). Batches every
+     * variant that newly dipped in the same run into one email instead of one per item. */
+    public void sendLowStockAlert(List<LowStockItem> items) {
+        String rows = items.stream().map(i -> {
+            String variantLine = (i.variantLabel() != null && !i.variantLabel().isBlank())
+                ? "<br><span style=\"color:#888;font-size:13px;\">%s</span>".formatted(escapeHtml(i.variantLabel()))
+                : "";
+            return """
+                <tr>
+                  <td style="padding:8px 0;border-bottom:1px solid #eee;">
+                    <a href="%s/admin/products/%s" style="color:#111;font-weight:bold;text-decoration:none;">%s</a>%s
+                    <br><span style="color:#888;font-size:13px;">SKU %s</span>
+                  </td>
+                  <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">%d / %d</td>
+                </tr>
+                """.formatted(frontendBaseUrl, i.productId(), escapeHtml(i.productName()), variantLine, escapeHtml(i.sku()),
+                    i.stockQty(), i.lowStockThreshold());
+        }).collect(Collectors.joining());
+        String html = """
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2>Low stock alert</h2>
+              <p>%d item%s dropped at or below their restock threshold:</p>
+              <table style="width:100%%;border-collapse:collapse;margin-top:12px;font-size:14px;">
+                <tr><th align="left" style="font-size:11px;color:#888;padding-bottom:4px;">Item</th><th align="right" style="font-size:11px;color:#888;padding-bottom:4px;">Stock / Threshold</th></tr>
+                %s
+              </table>
+              <p style="color:#888;font-size:13px;margin-top:16px;">Click an item to open it in the admin dashboard and add stock.</p>
+            </div>
+            """.formatted(items.size(), items.size() == 1 ? "" : "s", rows);
+        send(orderNotificationEmail, "Low stock alert -- " + items.size() + " item" + (items.size() == 1 ? "" : "s"), html);
+    }
+
     /** The cancellation reason is free text an admin typed, dropped straight into an HTML email -- escaped
      * so it can't break the markup (or, worse, inject a link/script) if someone pastes something odd in. */
     private static String escapeHtml(String s) {

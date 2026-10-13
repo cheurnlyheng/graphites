@@ -39,6 +39,12 @@ public class ProductDtos {
 
     public record UpdateVariantRequest(@PositiveOrZero Integer stockQty, @PositiveOrZero Integer lowStockThreshold) {}
 
+    /** One row on the admin Restock page -- productId/productName/size/color are only there so that
+     * page can show something human-readable and link straight to the product's edit page, where
+     * stock is actually added (see AdminProductController.updateVariant). */
+    public record LowStockVariantResponse(UUID variantId, UUID productId, String productName, String sku,
+                                           String size, String color, int stockQty, int lowStockThreshold) {}
+
     public record ImageRequest(String colorGroup, @NotBlank String url, Integer sortOrder) {}
 
     public record CreateProductRequest(

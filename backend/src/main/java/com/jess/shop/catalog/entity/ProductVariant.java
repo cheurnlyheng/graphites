@@ -45,4 +45,11 @@ public class ProductVariant {
     @Column(name = "low_stock_threshold", nullable = false)
     @Builder.Default
     private Integer lowStockThreshold = 5;
+
+    /** Whether the current dip below lowStockThreshold has already been emailed -- see
+     * LowStockAlertService. Reset to false once stock is topped back up (see
+     * ProductService.updateVariantStock), so a later dip alerts again. */
+    @Column(name = "low_stock_alert_sent", nullable = false)
+    @Builder.Default
+    private boolean lowStockAlertSent = false;
 }

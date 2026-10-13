@@ -10,6 +10,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Admin CRUD for the product catalog -- guarded by SecurityConfig's /api/admin/** ROLE_ADMIN rule. */
@@ -26,6 +27,12 @@ public class AdminProductController {
     @GetMapping
     public Page<ProductSummaryResponse> list(@PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return productService.adminList(pageable);
+    }
+
+    /** Backs the admin Restock page -- see ProductService.listLowStock. */
+    @GetMapping("/low-stock")
+    public List<LowStockVariantResponse> lowStock() {
+        return productService.listLowStock();
     }
 
     @GetMapping("/{id}")

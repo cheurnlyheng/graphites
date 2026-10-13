@@ -144,7 +144,28 @@ public class ProductService {
         if (request.lowStockThreshold() != null) {
             variant.setLowStockThreshold(request.lowStockThreshold());
         }
+        // Topped back up above threshold -- clear the alert flag so a later dip emails again
+        // instead of staying silent forever because it already fired once in the past.
+        if (variant.getStockQty() > variant.getLowStockThreshold()) {
+            variant.setLowStockAlertSent(false);
+        }
         return toVariantResponse(variantRepository.save(variant));
+    }
+
+    /** Every variant currently at/below its own threshold, for the admin Restock page -- always the
+     * live set (not just ones that triggered a fresh email; see LowStockAlertService for that). */
+    public List<LowStockVariantResponse> listLowStock() {
+        List<ProductVariant> variants = variantRepository.findLowStockVariants();
+        Map<UUID, Product> productsById = productRepository.findAllById(
+            variants.stream().map(ProductVariant::getProductId).distinct().toList()
+        ).stream().collect(Collectors.toMap(Product::getId, p -> p));
+        return variants.stream()
+            .map(v -> {
+                Product p = productsById.get(v.getProductId());
+                return new LowStockVariantResponse(v.getId(), v.getProductId(), p == null ? "(unknown)" : p.getName(),
+                    v.getSku(), v.getSize(), v.getColor(), v.getStockQty(), v.getLowStockThreshold());
+            })
+            .toList();
     }
 
     @Transactional

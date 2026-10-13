@@ -249,6 +249,22 @@ export interface ShippingRateOption {
   estimatedDays: number | null;
 }
 
+export interface MaintenanceStatus {
+  enabled: boolean;
+  message: string | null;
+}
+
+export interface LowStockVariant {
+  variantId: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  size: string | null;
+  color: string | null;
+  stockQty: number;
+  lowStockThreshold: number;
+}
+
 export interface HeroBannerResponse {
   id?: string;
   imageUrl: string;

@@ -36,4 +36,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     @Query("SELECT v FROM ProductVariant v WHERE v.stockQty <= v.lowStockThreshold")
     List<ProductVariant> findLowStockVariants();
+
+    /** Low-stock variants that haven't been emailed yet for their current dip -- see LowStockAlertService. */
+    @Query("SELECT v FROM ProductVariant v WHERE v.stockQty <= v.lowStockThreshold AND v.lowStockAlertSent = false")
+    List<ProductVariant> findNewlyLowStockVariants();
 }

@@ -72,6 +72,15 @@ const navSections: NavSection[] = [
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
           </svg>
         )
+      },
+      {
+        href: '/admin/restock',
+        label: 'Restock',
+        icon: (active) => (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2 : 1.75} className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        )
       }
     ]
   },
