@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getAdminAuth } from '@/lib/auth';
-import type { PageResponse, ProductSummaryResponse, OrderResponse, LowStockVariant } from '@/lib/types';
+import type { PageResponse, ProductSummaryResponse, OrderResponse } from '@/lib/types';
 
 export default function AdminDashboard() {
   const [productCount, setProductCount] = useState<number | null>(null);
   const [orderCount, setOrderCount] = useState<number | null>(null);
-  const [lowStockCount, setLowStockCount] = useState<number | null>(null);
 
   useEffect(() => {
     const auth = getAdminAuth();
@@ -22,10 +21,6 @@ export default function AdminDashboard() {
 
     apiFetch<PageResponse<OrderResponse>>('/api/admin/orders?status=PAID&size=1', { token: auth.token })
       .then((res) => setOrderCount(res.totalElements ?? res.content.length))
-      .catch(() => {});
-
-    apiFetch<LowStockVariant[]>('/api/admin/inventory/low-stock', { token: auth.token })
-      .then((res) => setLowStockCount(res.length))
       .catch(() => {});
   }, []);
 
@@ -73,7 +68,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {/* Products KPI */}
         <div className="rounded-xl border border-[#e5ded2] bg-white p-6 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all group">
           <div className="flex items-center justify-between text-[#10100F]/60">
@@ -127,33 +122,6 @@ export default function AdminDashboard() {
           </div>
           <p className="text-xs text-amber-800/70 mt-2">Paid orders awaiting shipping label generation</p>
         </div>
-
-        {/* Restock KPI */}
-        <div className="rounded-xl border border-[#e5ded2] bg-white p-6 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all group">
-          <div className="flex items-center justify-between text-[#10100F]/60">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Low Stock Alerts
-            </span>
-            <span className="w-8 h-8 rounded-full bg-[#f3f3f1] flex items-center justify-center text-[#10100F]/70 group-hover:bg-[#10100F] group-hover:text-white transition-colors">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between mt-3">
-            <span className="text-4xl font-extrabold text-[#10100F] tracking-tight">
-              {lowStockCount !== null ? lowStockCount : '0'}
-            </span>
-            <Link
-              href="/admin/purchase-orders"
-              className="text-xs font-bold uppercase tracking-wider text-[#10100F]/70 hover:text-[#10100F] inline-flex items-center gap-1 hover:underline"
-            >
-              <span>Restock</span>
-              <span>→</span>
-            </Link>
-          </div>
-          <p className="text-xs text-[#10100F]/55 mt-2">Product variants below minimum threshold</p>
-        </div>
       </div>
 
       {/* Main Administrative Modules Grid */}
@@ -162,7 +130,7 @@ export default function AdminDashboard() {
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#10100F]/60">
             Management Hubs
           </h2>
-          <span className="text-xs font-medium text-[#10100F]/40">6 Core Systems</span>
+          <span className="text-xs font-medium text-[#10100F]/40">4 Core Systems</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -231,55 +199,13 @@ export default function AdminDashboard() {
 
           {/* Card 4 */}
           <Link
-            href="/admin/suppliers"
-            className="group rounded-xl border border-[#e5ded2] bg-white p-6 hover:border-[#10100F] hover:shadow-sm transition-all relative overflow-hidden"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="w-8 h-8 rounded-full bg-[#f3f3f1] group-hover:bg-[#10100F] group-hover:text-white flex items-center justify-center text-xs font-bold transition-colors">
-                04
-              </span>
-              <span className="text-sm text-[#10100F]/40 group-hover:text-[#10100F] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all">
-                ↗
-              </span>
-            </div>
-            <h3 className="font-bold text-sm uppercase tracking-tight text-[#10100F]">
-              Supplier Directory
-            </h3>
-            <p className="mt-1.5 text-xs text-[#10100F]/65 leading-relaxed">
-              Textile mills and manufacturing partners, factory contacts, lead time tracking, and purchase ties.
-            </p>
-          </Link>
-
-          {/* Card 5 */}
-          <Link
-            href="/admin/purchase-orders"
-            className="group rounded-xl border border-[#e5ded2] bg-white p-6 hover:border-[#10100F] hover:shadow-sm transition-all relative overflow-hidden"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="w-8 h-8 rounded-full bg-[#f3f3f1] group-hover:bg-[#10100F] group-hover:text-white flex items-center justify-center text-xs font-bold transition-colors">
-                05
-              </span>
-              <span className="text-sm text-[#10100F]/40 group-hover:text-[#10100F] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all">
-                ↗
-              </span>
-            </div>
-            <h3 className="font-bold text-sm uppercase tracking-tight text-[#10100F]">
-              Restock Purchase Orders
-            </h3>
-            <p className="mt-1.5 text-xs text-[#10100F]/65 leading-relaxed">
-              Automated reorder triggers for depleted SKUs, shipment monitoring, and warehouse receiving.
-            </p>
-          </Link>
-
-          {/* Card 6 */}
-          <Link
             href="/"
             target="_blank"
             className="group rounded-xl border border-[#e5ded2] bg-white p-6 hover:border-[#10100F] hover:shadow-sm transition-all relative overflow-hidden"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="w-8 h-8 rounded-full bg-[#f3f3f1] group-hover:bg-[#10100F] group-hover:text-white flex items-center justify-center text-xs font-bold transition-colors">
-                06
+                04
               </span>
               <span className="text-sm text-[#10100F]/40 group-hover:text-[#10100F] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all">
                 ↗

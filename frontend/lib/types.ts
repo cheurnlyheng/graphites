@@ -249,39 +249,6 @@ export interface ShippingRateOption {
   estimatedDays: number | null;
 }
 
-export interface SupplierResponse {
-  id: string;
-  name: string;
-  contactEmail: string | null;
-  phone: string | null;
-  notes: string | null;
-}
-
-export interface LowStockVariant {
-  variantId: string;
-  sku: string;
-  productName: string;
-  stockQty: number;
-  lowStockThreshold: number;
-}
-
-export interface PurchaseOrderItemResponse {
-  id: string;
-  productVariantId: string;
-  sku: string;
-  quantity: number;
-  unitCost: number | null;
-}
-
-export interface PurchaseOrderResponse {
-  id: string;
-  supplierId: string;
-  supplierName: string;
-  status: string;
-  createdAt: string;
-  items: PurchaseOrderItemResponse[];
-}
-
 export interface HeroBannerResponse {
   id?: string;
   imageUrl: string;
