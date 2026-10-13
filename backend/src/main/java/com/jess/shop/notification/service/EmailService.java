@@ -198,24 +198,23 @@ public class EmailService {
     }
 
     /** Fired once per return request (see ReturnService.create) so the shop finds out without needing to
-     * keep /admin/returns open. Links the photos rather than attaching them -- same pattern as every
-     * other link in this app, and Resend has no attachment plumbing wired up here anyway. */
-    public void sendNewReturnNotification(UUID returnId, UUID orderId, String customerEmail, String reason, List<String> photoUrls) {
+     * keep /admin/returns open. Doesn't link or embed the submitted photos -- photoUrls is raw, unvalidated
+     * input from an unauthenticated endpoint (no accounts on this storefront), so dropping it straight into
+     * an href would let anyone submitting a return inject arbitrary markup into this inbox. The photos
+     * themselves are still fully reviewable, just from the admin dashboard instead of this email. */
+    public void sendNewReturnNotification(UUID returnId, UUID orderId, String customerEmail, String reason, int photoCount) {
         String returnUrl = frontendBaseUrl + "/admin/returns";
         String reasonLine = (reason != null && !reason.isBlank()) ? "<p>%s</p>".formatted(escapeHtml(reason)) : "";
-        String photoLinks = photoUrls.stream()
-            .map(url -> "<a href=\"%s\" style=\"margin-right:8px;\">Photo</a>".formatted(url))
-            .collect(Collectors.joining());
         String html = """
             <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
               <h2>New return request</h2>
               <p>From <strong>%s</strong> on order <strong>%s</strong>.</p>
               %s
-              <p>%s</p>
+              <p>%d condition photo%s submitted with this request -- view them in the admin dashboard.</p>
               <p><a href="%s" style="display:inline-block;padding:10px 20px;background:#111;color:#fff;text-decoration:none;border-radius:4px;">Review this return</a></p>
               <p style="color:#888;font-size:13px;">Return reference: %s</p>
             </div>
-            """.formatted(escapeHtml(customerEmail), orderId, reasonLine, photoLinks, returnUrl, returnId);
+            """.formatted(escapeHtml(customerEmail), orderId, reasonLine, photoCount, photoCount == 1 ? "" : "s", returnUrl, returnId);
         send(orderNotificationEmail, "New return request on order " + orderId, html);
     }
 

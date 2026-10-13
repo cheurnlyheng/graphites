@@ -165,7 +165,7 @@ public class ReturnService {
                 .build());
         }
 
-        emailService.sendNewReturnNotification(returnRequest.getId(), orderId, order.getEmail(), request.reason(), request.photoUrls());
+        emailService.sendNewReturnNotification(returnRequest.getId(), orderId, order.getEmail(), request.reason(), request.photoUrls().size());
 
         return toResponse(returnRequest);
     }
