@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   description:
     'Graphites is a small boutique making vintage-inspired tees, hoodies, and pants. ' +
     'Shop the Graphites collection, shipped from our studio to your door.',
-  keywords: ['Graphites', 'graphites clothing', 'vintage streetwear', 'vintage tees', 'boutique hoodies'],
+  keywords: ['Graphites', 'graphites clothing', 'graphite','graphites world','graphites shop', 'graphite world'],
   alternates: {
     canonical: SITE_URL
   },
