@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL
   },
+  verification: {
+    google: 'cbK7n_aZgliJAjz17U4mOiivTPhczCO39vSGB3xOdLE'
+  },
   openGraph: {
     type: 'website',
     siteName: 'Graphites',
